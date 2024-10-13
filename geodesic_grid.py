@@ -5,12 +5,13 @@ import numpy as np
 class GeodesicGrid:
     # Create a basic geodesic grid (icosahedron-based)
     def __init__(self, resolution: int = 0):
-        self.vertices, self.faces = self.make_icosahedron()
+        self.vertices, self.faces = self.build_icosahedron()
         self.vertices, self.faces = self.geodesic_subdivide(resolution)
+        self.neighbors = self.build_neighbors()
 
 
     @staticmethod
-    def make_icosahedron():
+    def build_icosahedron():
         # Create the vertices of an icosahedron
         phi = (1.0 + np.sqrt(5.0)) / 2.0
 
@@ -91,3 +92,15 @@ class GeodesicGrid:
             print(f"An error occurred during geodesic subdivision: {e}")
             raise
 
+
+    def build_neighbors(self):
+        """
+        Build an adjacency list where each vertex maps to its neighboring vertices.
+        """
+        neighbors = {i: set() for i in range(len(self.vertices))}
+        for tri in self.faces:
+            v1, v2, v3 = tri
+            neighbors[v1].update([v2, v3])
+            neighbors[v2].update([v1, v3])
+            neighbors[v3].update([v1, v2])
+        return neighbors
