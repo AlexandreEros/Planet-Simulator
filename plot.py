@@ -1,26 +1,23 @@
 import matplotlib.pyplot as plt
 import numpy as np
+from numpy.typing import NDArray
 
 
 
-def plot_mesh(vertices, faces):
+def plot_mesh(vertices: NDArray[float], faces: NDArray[int]) -> None:
     try:
         # Check if vertices and faces are valid numpy arrays
         if not isinstance(vertices, np.ndarray) or not isinstance(faces, np.ndarray):
             raise TypeError("Vertices and faces must be numpy arrays.")
-
         # Ensure vertices is 2D and faces is 2D
         if vertices.ndim != 2 or faces.ndim != 2:
             raise ValueError("Vertices and faces must be 2D arrays.")
-
         # Ensure vertices have three columns (X, Y, Z coordinates)
         if vertices.shape[1] != 3:
             raise ValueError(f"Vertices must have shape (n, 3), got {vertices.shape}")
-
         # Ensure faces contain valid vertex indices
         if np.any(faces >= len(vertices)) or np.any(faces < 0):
             raise IndexError("Faces reference invalid vertex indices.")
-
 
         fig = plt.figure(figsize=(8, 8))
         ax = fig.add_subplot(111, projection='3d')
@@ -29,10 +26,14 @@ def plot_mesh(vertices, faces):
         # Plot each triangular face as a wireframe
         for face in faces:
             try:
-                triangle = vertices[face]
+                # face: {NDArray[int]: (3,)} are the indices of the triangles that make up the corresponding face
+                triangle_coords = vertices[face]   # vertices[face] uses fancy indexing; array of shape (3, 3)
                 # Close the triangle by appending the first point at the end
-                triangle = np.vstack([triangle, triangle[0]])
-                ax.plot(triangle[:, 0], triangle[:, 1], triangle[:, 2], color='c')
+                closed_triangle = np.vstack([triangle_coords, triangle_coords[0]])  # shape (4,3)
+                x = closed_triangle[:, 0]  # Arrays of shape (4,)
+                y = closed_triangle[:, 1]
+                z = closed_triangle[:, 2]
+                ax.plot(xs=x, ys=y, zs=z, color='c')
             except IndexError as e:
                 raise IndexError(f"Error while accessing vertices for face {face}: {e}")
             except Exception as e:
