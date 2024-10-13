@@ -4,7 +4,7 @@ import numpy as np
 
 class GeodesicGrid:
     # Create a basic geodesic grid (icosahedron-based)
-    def __init__(self, resolution=0):
+    def __init__(self, resolution: int = 0):
         self.vertices, self.faces = self.make_icosahedron()
         self.vertices, self.faces = self.geodesic_subdivide(resolution)
 
@@ -36,34 +36,58 @@ class GeodesicGrid:
         """
         Subdivide each triangle in the faces list to increase the resolution.
         """
-        vertices = self.vertices.tolist()  # Convert to list for easier handling
-        for _ in range(depth):
-            new_faces = []
-            vertex_dict = {}
+        try:
+            # Convert vertices to list for easier manipulation
+            vertices = self.vertices.tolist()  # Convert to list for easier handling
 
-            def get_midpoint(v1, v2):
+            def get_midpoint(v1, v2, vertex_dict):
                 key = tuple(sorted((v1, v2)))
                 if key not in vertex_dict:
-                    midpoint = (np.array(vertices[v1]) + np.array(vertices[v2])) / 2.0
-                    vertex_dict[key] = len(vertices)
-                    vertices.append((midpoint / np.linalg.norm(midpoint)).tolist())  # Normalize to keep on sphere
+                    try:
+                        midpoint = (np.array(vertices[v1]) + np.array(vertices[v2])) / 2.0
+                        norm = np.linalg.norm(midpoint)
+                        if norm == 0:
+                            raise ValueError
+                        midpoint = midpoint / norm  # Normalize to keep on sphere
+                        vertex_dict[key] = len(vertices)
+                        vertices.append(midpoint.tolist())
+                    except ZeroDivisionError as err:
+                        raise ZeroDivisionError(f"Midpoint between vertices {v1} and {v2} at depth {_} "
+                                                f"has norm 0: {err}")
+                    except IndexError as err:
+                        raise IndexError(f"Vertex index out of bounds: {err}")
+                    except Exception as err:
+                        raise ValueError(f"Error calculating midpoint for vertices {v1} and {v2}: {err}")
                 return vertex_dict[key]
 
-            # Subdivide each triangle
-            for tri in self.faces:
-                v1, v2, v3 = tri
-                a = get_midpoint(v1, v2)
-                b = get_midpoint(v2, v3)
-                c = get_midpoint(v3, v1)
+            for _ in range(depth):
+                new_faces = []
+                vertex_dict = {}
 
-                # Create four new triangles
-                new_faces.extend([
-                    [v1, a, c],
-                    [v2, b, a],
-                    [v3, c, b],
-                    [a, b, c]
-                ])
+                # Subdivide each triangle into four smaller triangles
+                for tri in self.faces:
+                    try:
+                        v1, v2, v3 = tri
+                        a = get_midpoint(v1, v2, vertex_dict)
+                        b = get_midpoint(v2, v3, vertex_dict)
+                        c = get_midpoint(v3, v1, vertex_dict)
 
-            self.faces = new_faces
+                        # Create four new triangles
+                        new_faces.extend([
+                            [v1, a, c],
+                            [v2, b, a],
+                            [v3, c, b],
+                            [a, b, c]
+                        ])
+                    except ValueError as err:
+                        raise ValueError(f"Error subdividing triangle {tri} at depth {_}: {err}")
 
-        return np.array(vertices), np.array(self.faces)
+                # Replace old faces with new ones
+                self.faces = new_faces
+
+            return np.array(vertices), np.array(self.faces)
+
+        except Exception as e:
+            print(f"An error occurred during geodesic subdivision: {e}")
+            raise
+
