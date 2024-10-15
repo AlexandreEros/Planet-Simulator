@@ -5,9 +5,12 @@ import matplotlib.pyplot as plt
 from stellar_system import StellarSystem
 
 class Simulation:
-    def __init__(self, timestep: float = 3600.0, n_steps: int = 2400.0):
+    def __init__(self, timestep: float = 3600.0, n_steps: int = 2400.0, steps_between_snapshots: int = 8):
         self.delta_t = timestep
-        self.total_t = self.delta_t * n_steps
+        self.n_steps = n_steps
+        self.steps_between_snapshots = steps_between_snapshots
+        self.n_snapshots = int(np.ceil(self.n_steps / self.steps_between_snapshots))
+
         self.time = 0.0
 
         self.G = constants.G
@@ -20,45 +23,41 @@ class Simulation:
             'mass': 1.989e30,
             'position': np.array([0, 0, 0]).astype(np.float64),
             'velocity': np.array([0, 0, 0]).astype(np.float64),
+            'color': 'gold'
         }
         earth_dict = {
             'name': "Earth",
             'mass': 5.972e24,
             'position': np.array([1.496e11, 0, 0]).astype(np.float64),
             'velocity': np.array([0, 29780, 0]).astype(np.float64),
+            'color': 'blue'
         }
         self.stellar_system.add_body(**sun_dict)
         self.stellar_system.add_body(**earth_dict)
 
-        self.position_history: list[dict[str, list[float]]] = []
+        self.position_history = {body.name: np.ndarray((self.n_snapshots, 3), dtype=np.float64)
+                                 for body in self.stellar_system.bodies}
 
 
     def run(self):
-        while self.time < self.total_t:
+        for i_step in range(self.n_steps):
             self.time += self.delta_t
             self.stellar_system.update(self.delta_t)
-            self.position_history.append(self.stellar_system.positions)
+            if i_step % self.steps_between_snapshots == 0:
+                i_snapshot = i_step // self.steps_between_snapshots
+                for body in self.stellar_system.bodies:
+                    self.position_history[body.name][i_snapshot] = body.position
 
 
     def plot_orbits(self):
         # Create a figure for the plot
         plt.figure(figsize=(10, 6))
 
-        # Extract positions for Sun and Earth from provided history
-        sun_x, sun_y = [], []
-        earth_x, earth_y = [], []
-
-        for entry in self.position_history:
-            sun_x.append(entry['Sun'][0])
-            sun_y.append(entry['Sun'][1])
-            earth_x.append(entry['Earth'][0])
-            earth_y.append(entry['Earth'][1])
-
-        # Plotting the Sun's trajectory
-        plt.plot(sun_x, sun_y, 'o-', label='Sun', color='gold')
-
-        # Plotting the Earth's trajectory
-        plt.plot(earth_x, earth_y, 'o-', label='Earth', color='blue')
+        for body in self.stellar_system.bodies:
+            # Extract positions for Sun and Earth from provided history
+            x = self.position_history[body.name][:, 0]
+            y = self.position_history[body.name][:, 1]
+            plt.plot(x, y, 'o-', label=body.name, color=body.color)
 
         # Setting labels and title
         plt.xlabel("X Position (m)")

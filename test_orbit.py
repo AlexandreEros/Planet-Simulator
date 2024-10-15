@@ -4,21 +4,21 @@ from simulation import Simulation
 import sys
 
 def test_orbit():
-    if len(sys.argv) == 1:
-        timestep = 3600.0
-        n_steps = 2400
-    elif len(sys.argv) == 2:
+    timestep = None
+    n_steps = None
+    steps_between_snapshots = None
+    if len(sys.argv) > 1:
         timestep = float(sys.argv[1])
-        n_steps = 2400
-    elif len(sys.argv) == 3:
-        timestep = float(sys.argv[1])
+    if len(sys.argv) > 2:
         n_steps = int(sys.argv[2])
-    else:
+    if len(sys.argv) > 3:
+        steps_between_snapshots = int(sys.argv[3])
+    if len(sys.argv) > 4:
         print("Too many arguments; only 'timestep' and 'n_steps' are required.")
         sys.exit(1)
 
     try:
-        sim = Simulation(timestep, n_steps)
+        sim = Simulation(timestep, n_steps, steps_between_snapshots)
     except Exception as err:
         print(f"Error setting up simulation: {err}")
         sys.exit(1)
