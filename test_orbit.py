@@ -4,9 +4,9 @@ from simulation import Simulation
 from plot import plot_orbits
 
 def test_orbit():
-    timestep = None
-    n_steps = None
-    steps_between_snapshots = None
+    timestep = 3600
+    n_steps = 8766
+    steps_between_snapshots = 8
     if len(sys.argv) > 1:
         timestep = float(sys.argv[1])
     if len(sys.argv) > 2:

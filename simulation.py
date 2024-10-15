@@ -3,7 +3,7 @@ from scipy import constants
 from stellar_system import StellarSystem
 
 class Simulation:
-    def __init__(self, timestep: float = 3600.0, n_steps: int = 2400.0, steps_between_snapshots: int = 8):
+    def __init__(self, timestep: float, n_steps: int, steps_between_snapshots: int = 1):
         self.delta_t = timestep
         self.n_steps = n_steps
         self.steps_between_snapshots = steps_between_snapshots
