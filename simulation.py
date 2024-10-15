@@ -47,24 +47,3 @@ class Simulation:
                 i_snapshot = i_step // self.steps_between_snapshots
                 for body in self.stellar_system.bodies:
                     self.position_history[body.name][i_snapshot] = body.position
-
-
-    def plot_orbits(self):
-        # Create a figure for the plot
-        plt.figure(figsize=(10, 6))
-
-        for body in self.stellar_system.bodies:
-            # Extract positions for Sun and Earth from provided history
-            x = self.position_history[body.name][:, 0]
-            y = self.position_history[body.name][:, 1]
-            plt.plot(x, y, 'o-', label=body.name, color=body.color)
-
-        # Setting labels and title
-        plt.xlabel("X Position (m)")
-        plt.ylabel("Y Position (m)")
-        plt.title("Orbital Trajectories")
-        plt.legend()
-        plt.axis('equal')
-
-        # Display the plot
-        plt.show()

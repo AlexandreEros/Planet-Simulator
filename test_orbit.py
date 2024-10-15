@@ -1,7 +1,7 @@
-from argparse import ArgumentError
+import sys
 
 from simulation import Simulation
-import sys
+from plot import plot_orbits
 
 def test_orbit():
     timestep = None
@@ -30,7 +30,7 @@ def test_orbit():
         sys.exit(1)
 
     try:
-        sim.plot_orbits()
+        plot_orbits(sim)
     except Exception as err:
         print(f"Error plotting orbits: {err}")
         sys.exit(1)

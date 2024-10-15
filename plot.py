@@ -2,6 +2,8 @@ import matplotlib.pyplot as plt
 import numpy as np
 from numpy.typing import NDArray
 
+from celestial_body import CelestialBody
+from simulation import Simulation
 
 
 def plot_mesh(vertices: NDArray[float], faces: NDArray[int]) -> None:
@@ -58,3 +60,27 @@ def plot_mesh(vertices: NDArray[float], faces: NDArray[int]) -> None:
         print(f"Index error: {e}")
     except Exception as e:
         print(f"An unexpected error occurred: {e}")
+
+
+def plot_orbits(sim: Simulation):
+    position_history: dict[str, np.ndarray] = sim.position_history
+    bodies: list[CelestialBody] = sim.stellar_system.bodies
+
+    # Create a figure for the plot
+    plt.figure(figsize=(10, 6))
+
+    for body in bodies:
+        # Extract positions for Sun and Earth from provided history
+        x = position_history[body.name][:, 0]
+        y = position_history[body.name][:, 1]
+        plt.plot(x, y, 'o-', label=body.name, color=body.color)
+
+    # Setting labels and title
+    plt.xlabel("X Position (m)")
+    plt.ylabel("Y Position (m)")
+    plt.title("Orbital Trajectories")
+    plt.legend()
+    plt.axis('equal')
+
+    # Display the plot
+    plt.show()
