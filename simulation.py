@@ -1,7 +1,5 @@
 import numpy as np
-import pandas as pd
 from scipy import constants
-import matplotlib.pyplot as plt
 from stellar_system import StellarSystem
 
 class Simulation:
