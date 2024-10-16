@@ -35,6 +35,7 @@ class Simulation:
             'mass': 5.972e2,
             'orbital_period': 2 * 15778800.0, # 2 * SIX MONTHS in seconds
             'eccentricity': 0.75,
+            'year_percentage': 0.5,
             'color': 'gray'
         }
         self.stellar_system.add_body(**sun_dict)

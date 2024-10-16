@@ -1,4 +1,5 @@
 import numpy as np
+import scipy as sp
 from celestial_body import CelestialBody
 
 class StellarSystem:
@@ -20,13 +21,17 @@ class StellarSystem:
         kws = kwargs.keys()
         if 'position' in kws and 'velocity' in kws:
             self.bodies.append(CelestialBody(**kwargs))
-        elif 'orbital_period' in kws and 'eccentricity' in kws:
+        elif 'orbital_period' in kws:
+            if 'eccentricity' not in kws: kwargs['eccentricity'] = 0.0
+            if 'year_percentage' not in kws: kwargs['year_percentage'] = 0.0
             kwargs['position'], kwargs['velocity'] = \
-                self.get_periapsis_vectors(kwargs['orbital_period'], kwargs['eccentricity'], self.bodies[0].mass, self.G)
+                self.get_start_vectors(kwargs['orbital_period'], 2*np.pi*kwargs['year_percentage'], kwargs['eccentricity'],
+                                       self.bodies[0].mass, self.G)
+                # self.get_periapsis_vectors(kwargs['orbital_period'], kwargs['eccentricity'], self.bodies[0].mass, self.G)
             self.bodies.append(CelestialBody(**kwargs))
         else:
-            raise Exception(f"Either 'position' and 'velocity' or 'orbital_period' and 'eccentricity' must be given for "
-                            f"each planet, but {kwargs['name']} does not.")
+            raise Exception(f"Either 'position' and 'velocity' or 'orbital_period' must be given for "
+                            f"each planet, but {kwargs['name']} does not meet these conditions.")
 
     @staticmethod
     def get_periapsis_vectors(T: float, e: float, M: float, G: float = 6.67430e-11) -> (np.ndarray, np.ndarray):
@@ -46,6 +51,31 @@ class StellarSystem:
         initial_velocity = np.array([0., max_speed, 0.], dtype=np.float64)
         return initial_position, initial_velocity
 
+    @staticmethod
+    def get_semimajor_axis(T: float, M: float, G: float = 6.67430e-11):
+        # From Kepler's Third law T**2 = (4 * pi**2 * a**3) / (G * M),
+        # Where 'a' is the semi-major axis, or apoapsis:
+        apoapsis = float(np.cbrt((G * M) / (2 * np.pi / T)**2))
+        return apoapsis
+
+    @staticmethod
+    def get_start_vectors(T, mean_anomaly, e, mass, G = 6.67430e-11) -> (np.ndarray, np.ndarray):
+        a = StellarSystem.get_semimajor_axis(T, mass, G)
+
+        eccentric_anomaly = sp.optimize.newton(lambda E: mean_anomaly - E + e * np.sin(E), 0)
+        true_anomaly = 2 * np.arctan(np.sqrt((1+e)/(1-e)) * np.tan(eccentric_anomaly/2))
+        distance = a * (1 - e**2) / (1 + e * np.cos(true_anomaly))
+
+        radial_velocity_mag = np.sqrt(G*mass/a) * (e*np.sin(true_anomaly)) / np.sqrt(1 - e**2)
+        speed = float(np.sqrt(G*mass * (2/distance - 1/a)))
+        transverse_velocity_mag = np.sqrt(speed**2 - radial_velocity_mag**2)
+        # = np.sqrt((G*mass/a) * (1 + e*np.cos(true_anomaly)) / (1 - e**2))
+
+        radial_vec = np.array([np.cos(true_anomaly), np.sin(true_anomaly), 0.], dtype=np.float64)
+        transverse_vec = np.array([-np.sin(true_anomaly), np.cos(true_anomaly), 0.], dtype=np.float64)
+        position = distance * radial_vec
+        velocity = radial_velocity_mag * radial_vec + transverse_velocity_mag * transverse_vec
+        return position, velocity
 
     @staticmethod
     def get_gravity(body: CelestialBody, all_bodies: list[CelestialBody], G: float = 6.67430e-11) -> np.ndarray[np.float64]:
