@@ -30,9 +30,16 @@ class Simulation:
             'velocity': np.array([0, 29780, 0]).astype(np.float64),
             'color': 'blue'
         }
+        test_object_dict = {
+            'name': "Test object",
+            'mass': 5.972e2,
+            'orbital_period': 2 * 15778800.0, # 2 * SIX MONTHS in seconds
+            'eccentricity': 0.75,
+            'color': 'gray'
+        }
         self.stellar_system.add_body(**sun_dict)
         self.stellar_system.add_body(**earth_dict)
-
+        self.stellar_system.add_body(**test_object_dict)
         self.position_history = {body.name: np.ndarray((self.n_snapshots, 3), dtype=np.float64)
                                  for body in self.stellar_system.bodies}
 

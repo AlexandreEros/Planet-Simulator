@@ -17,7 +17,34 @@ class StellarSystem:
 
 
     def add_body(self, **kwargs) -> None:
-        self.bodies.append(CelestialBody(**kwargs))
+        kws = kwargs.keys()
+        if 'position' in kws and 'velocity' in kws:
+            self.bodies.append(CelestialBody(**kwargs))
+        elif 'orbital_period' in kws and 'eccentricity' in kws:
+            kwargs['position'], kwargs['velocity'] = \
+                self.get_periapsis_vectors(kwargs['orbital_period'], kwargs['eccentricity'], self.bodies[0].mass, self.G)
+            self.bodies.append(CelestialBody(**kwargs))
+        else:
+            raise Exception(f"Either 'position' and 'velocity' or 'orbital_period' and 'eccentricity' must be given for "
+                            f"each planet, but {kwargs['name']} does not.")
+
+    @staticmethod
+    def get_periapsis_vectors(T: float, e: float, M: float, G: float = 6.67430e-11) -> (np.ndarray, np.ndarray):
+        # T: Orbital period
+        # e: Orbit eccentricity
+
+        # From Kepler's Third law T**2 = (4 * pi**2 * a**3) / (G * M),
+        # Where 'a' is the semi-major axis, or apoapsis:
+        apoapsis = float(np.cbrt((G * M) / (2 * np.pi / T)**2))
+        periapsis = (1 - e) * apoapsis
+
+        # From the vis-viva equation v = sqrt(G*M * (2/r - 1/a)):
+        max_speed = float(np.sqrt(G*M * (2/periapsis - 1/apoapsis)))
+
+        # Let's assume the object always starts at periapsis, which is always on the positive x-axis:
+        initial_position = np.array([periapsis, 0., 0.], dtype=np.float64)
+        initial_velocity = np.array([0., max_speed, 0.], dtype=np.float64)
+        return initial_position, initial_velocity
 
 
     @staticmethod
