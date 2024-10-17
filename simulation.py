@@ -35,13 +35,15 @@ class Simulation:
             'mass': 5.972e2,
             'orbital_period': 2 * 15778800.0, # 2 * SIX MONTHS in seconds
             'eccentricity': 0.75,
-            'year_percentage': 0.5,
+            'year_percentage': 0.0,
             'color': 'gray'
         }
         self.stellar_system.add_body(**sun_dict)
         self.stellar_system.add_body(**earth_dict)
         self.stellar_system.add_body(**test_object_dict)
         self.position_history = {body.name: np.ndarray((self.n_snapshots, 3), dtype=np.float64)
+                                 for body in self.stellar_system.bodies}
+        self.velocity_history = {body.name: np.ndarray((self.n_snapshots, 3), dtype=np.float64)
                                  for body in self.stellar_system.bodies}
 
 
@@ -53,3 +55,4 @@ class Simulation:
                 i_snapshot = i_step // self.steps_between_snapshots
                 for body in self.stellar_system.bodies:
                     self.position_history[body.name][i_snapshot] = body.position
+                    self.velocity_history[body.name][i_snapshot] = body.velocity
