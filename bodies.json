@@ -1,0 +1,26 @@
+{
+    "bodies": [
+        {
+            "name": "Sun",
+            "mass": 1.989e30,
+            "position": [0, 0, 0],
+            "velocity": [0, 0, 0],
+            "color": "gold"
+        },
+        {
+            "name": "Earth",
+            "mass": 5.972e24,
+            "position": [1.496e11, 0, 0],
+            "velocity": [0, 29780, 0],
+            "color": "blue"
+        },
+        {
+            "name": "Test object",
+            "mass": 5.972e2,
+            "orbital_period": 31557600,
+            "eccentricity": 0.75,
+            "year_percentage": 0.25,
+            "color": "gray"
+        }
+    ]
+}

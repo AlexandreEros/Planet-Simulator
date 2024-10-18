@@ -19,6 +19,9 @@ class StellarSystem:
 
     def add_body(self, **kwargs) -> None:
         kws = kwargs.keys()
+        for kw in kws:
+            if isinstance(kwargs[kw], list):
+                kwargs[kw] = np.array(kwargs[kw], dtype = np.float64)
         if 'position' in kws and 'velocity' in kws:
             self.bodies.append(CelestialBody(**kwargs))
         elif 'orbital_period' in kws:
