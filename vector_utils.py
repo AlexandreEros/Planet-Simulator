@@ -51,4 +51,15 @@ def rotate_vector(vector: np.ndarray, axis: np.ndarray, angle_rad: float) -> np.
 
 deg2rad = lambda ang_deg: np.pi * ang_deg / 180.0
 
+normalize = lambda vec: vec / np.linalg.norm(vec, axis=-1)
+
+
+def cartesian_to_spherical(vertex: np.ndarray):
+    x, y, z = tuple(vertex.tolist())
+    # Longitude (in degrees)
+    longitude = np.degrees(np.arctan2(y, x))
+    # Latitude (in degrees)
+    latitude = np.degrees(np.arcsin(z / np.linalg.norm(vertex)))
+    return latitude, longitude
+
 

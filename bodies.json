@@ -12,6 +12,8 @@
         {
             "name": "Earth",
             "body_type": "planet",
+            "radius": 6378000,
+            "resolution": 2,
             "mass": 5.972e24,
             "position": [1.496e11, 0, 0],
             "velocity": [0, 29780, 0],
@@ -23,12 +25,14 @@
         {
             "name": "Test object",
             "body_type": "planet",
+            "radius": 6378,
+            "resolution": 0,
             "mass": 5.972e2,
             "orbital_period": 31557600,
             "eccentricity": 0.75,
             "year_percentage": 0.25,
 	        "argument_of_perihelion_deg": 60,
-            "sidereal_day": 86400,
+            "sidereal_day": 172800,
             "axial_tilt_deg": 30,
             "longitude_ascending_node_deg": 90,
             "color": "gray"

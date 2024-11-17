@@ -18,6 +18,7 @@ class Simulation:
         self.load_bodies_from_file(body_file)
 
         self.time = 0.0
+
         self.position_history = {body.name: np.ndarray((self.n_snapshots, 3), dtype=np.float64)
                                  for body in self.stellar_system.bodies}
         self.velocity_history = {body.name: np.ndarray((self.n_snapshots, 3), dtype=np.float64)
@@ -28,13 +29,19 @@ class Simulation:
         self.angle_history = {body.name: np.ndarray((self.n_snapshots,), dtype=np.float64)
                                  for body in self.stellar_system.bodies if body.body_type=='planet'}
 
+        self.irradiance_history = {body.name: np.ndarray((self.n_snapshots,len(body.irradiance)), dtype=np.float64)
+                                 for body in self.stellar_system.bodies if body.body_type=='planet'}
+
 
     def load_bodies_from_file(self, body_file: str):
         """Load celestial bodies from a JSON file and add them to the system."""
         with open(body_file, 'r') as f:
             data = json.load(f)
             for body_data in data['bodies']:
-                self.stellar_system.add_body(**body_data)
+                try:
+                    self.stellar_system.add_body(**body_data)
+                except Exception as err:
+                    raise Exception(f"Error creating the {body_data['body_type']} '{body_data['name']}':\n{err}")
 
 
     def run(self):
@@ -47,6 +54,7 @@ class Simulation:
                     if body.body_type == 'planet':
                         self.sunlight_vector_history[body.name][i_snapshot] = body.sunlight
                         self.angle_history[body.name][i_snapshot] = body.current_angle
+                        self.irradiance_history = body.irradiance
                 self.total_angular_momentum_history[i_snapshot] = self.stellar_system.current_total_angular_momentum
 
             self.time += self.delta_t
