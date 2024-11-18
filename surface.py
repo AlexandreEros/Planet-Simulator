@@ -1,16 +1,21 @@
 import numpy as np
 from geodesic_grid import GeodesicGrid
 import noise
-from vector_utils import cartesian_to_spherical
+from vector_utils import cartesian_to_spherical, normalize
 
 class Surface(GeodesicGrid):
-    def __init__(self, radius: float, resolution: int = 0, noise_scale: float = 1.0, noise_octaves: int = 4, noise_amplitude: float = 0.05):
+    def __init__(self, radius: float, **kwargs): #resolution: int = 0, noise_scale: float = 1.0, noise_octaves: int = 4,
+                 #noise_amplitude: float = 0.05, noise_bias: float = 0.0, noise_offset: list[float] = (0.0, 0.0, 0.0)):
         try:
-            super().__init__(resolution)
             self.radius = radius
-            self.noise_scale = noise_scale
-            self.noise_octaves = noise_octaves
-            self.noise_amplitude = noise_amplitude
+            self.resolution = 0 if 'resolution' not in kwargs else int(kwargs['resolution'])
+            self.noise_scale = 1.0 if 'noise_scale' not in kwargs else float(kwargs['noise_scale'])
+            self.noise_octaves = 4 if 'noise_octaves' not in kwargs else int(kwargs['noise_octaves'])
+            self.noise_amplitude = 0.05 if 'noise_amplitude' not in kwargs else float(kwargs['noise_amplitude'])
+            self.noise_bias = 0.0 if 'noise_bias' not in kwargs else float(kwargs['noise_bias'])
+            self.noise_offset = (0.0, 0.0, 0.0) if 'noise_offset' not in kwargs else \
+                tuple([float(n.strip(' ')) for n in kwargs['noise_offset'][1:-1].split(',')])
+            super().__init__(self.resolution)
 
             self.distance = self.elevate_terrain()
             self.vertices *= self.distance[:,None]
@@ -31,12 +36,14 @@ class Surface(GeodesicGrid):
         try:
             elevations = []
             for vertex in self.vertices:
-                elevation = noise.pnoise3(vertex[0] * self.noise_scale,
-                                          vertex[1] * self.noise_scale,
-                                          vertex[2] * self.noise_scale,
+                elevation = noise.pnoise3(vertex[0] * self.noise_scale + self.noise_offset[0],
+                                          vertex[1] * self.noise_scale + self.noise_offset[1],
+                                          vertex[2] * self.noise_scale + self.noise_offset[2],
                                           octaves=self.noise_octaves)
                 elevations.append(elevation)
-            relative_distances = 1 + self.noise_amplitude * np.array(elevations)
+            elevations -= (np.amin(elevations) + np.amax(elevations)) / 2
+            elevations *= 0.5 / np.amax(elevations)
+            relative_distances = 1 + self.noise_amplitude * (np.array(elevations) + self.noise_bias/2)
             distances = self.radius * relative_distances
             return distances
 
@@ -66,6 +73,9 @@ class Surface(GeodesicGrid):
 
             normal_magnitudes = np.linalg.norm(normals, axis=-1)
             normals /= normal_magnitudes[..., None]
+
+            is_water = self.elevation<=0.0
+            normals[is_water] = normalize(self.vertices[is_water])
 
             return normals
 

@@ -13,29 +13,41 @@
             "name": "Earth",
             "body_type": "planet",
             "radius": 6378000,
-            "resolution": 2,
             "mass": 5.972e24,
             "position": [1.496e11, 0, 0],
             "velocity": [0, 29780, 0],
             "sidereal_day": 86400,
             "axial_tilt_deg": 23.5,
-            "longitude_ascending_node_deg": 90,
-            "color": "blue"
+            "longitude_ascending_node_deg": 0,
+            "color": "blue",
+            "surface_data": {
+                "resolution": 5,
+                "noise_scale": 2.0,
+                "noise_octaves": 5,
+                "noise_amplitude": 0.01,
+                "noise_bias": -0.01
+            }
         },
         {
             "name": "Test object",
             "body_type": "planet",
             "radius": 6378,
-            "resolution": 0,
             "mass": 5.972e2,
             "orbital_period": 31557600,
             "eccentricity": 0.75,
             "year_percentage": 0.25,
 	        "argument_of_perihelion_deg": 60,
             "sidereal_day": 172800,
-            "axial_tilt_deg": 30,
+            "axial_tilt_deg": 60,
             "longitude_ascending_node_deg": 90,
-            "color": "gray"
+            "color": "gray",
+            "surface_data": {
+                "resolution": 0,
+                "noise_scale": 1.0,
+                "noise_octaves": 2,
+                "noise_amplitude": 0.5,
+                "noise_bias": 1.0
+            }
         }
     ]
 }

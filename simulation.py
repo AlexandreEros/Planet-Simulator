@@ -54,7 +54,7 @@ class Simulation:
                     if body.body_type == 'planet':
                         self.sunlight_vector_history[body.name][i_snapshot] = body.sunlight
                         self.angle_history[body.name][i_snapshot] = body.current_angle
-                        self.irradiance_history = body.irradiance
+                        self.irradiance_history[body.name][i_snapshot] = body.irradiance
                 self.total_angular_momentum_history[i_snapshot] = self.stellar_system.current_total_angular_momentum
 
             self.time += self.delta_t

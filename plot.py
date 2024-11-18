@@ -1,7 +1,9 @@
 import matplotlib.pyplot as plt
 import matplotlib.colors as mcolors
+import matplotlib.animation as animation
 import numpy as np
 from scipy.interpolate import griddata
+from datetime import datetime
 
 from celestial_body import CelestialBody
 from geodesic_grid import GeodesicGrid
@@ -16,10 +18,22 @@ class Plot:
             self.func = self.orbits
         elif plot_type=='elevation':
             self.func = self.worldmap
-            elevation = args[0]
+            surf = args[0]
+            coordinates = surf.coordinates
+            elevation = surf.elevation
             kwargs['title'] = 'Elevation (m)'
-            kwargs['vmax'] = min(abs(np.amax(elevation)), abs(np.amin(elevation)))
-            kwargs['vmin']= -kwargs['vmax']
+            kwargs['resolution'] = int(np.ceil(0.03 * max(coordinates.shape)))
+            kwargs['vmax'] = np.amax(elevation) # min(abs(np.amax(elevation)), abs(np.amin(elevation)))
+            kwargs['vmin']= np.amin(elevation) # -kwargs['vmax']
+            kwargs['sea_level_fraction'] = (0 - kwargs['vmin']) / (kwargs['vmax'] - kwargs['vmin'])
+            args = (coordinates, elevation)
+        elif plot_type=='irradiance':
+            self.func = self.animate
+            sim = args[0]
+            args = (sim.stellar_system.bodies[1].surface.coordinates, sim.irradiance_history['Earth'],)
+            kwargs['title'] = 'Irradiance (W/m²)'
+            kwargs['vmax'] = np.amax(sim.irradiance_history['Earth'])
+            kwargs['vmin']= 0.0
 
         self.func(*args, **kwargs)
 
@@ -105,7 +119,8 @@ class Plot:
 
 
     @staticmethod
-    def worldmap(coordinates: np.ndarray, variable: np.ndarray, resolution: int = 360, title='', vmin=None, vmax=None):
+    def worldmap(coordinates: np.ndarray, variable: np.ndarray,
+                 resolution: int = 360, title='', vmin=None, vmax=None, sea_level_fraction = 0.0):
         """
         Plot the equirectangular projection of the terrain.
 
@@ -133,9 +148,13 @@ class Plot:
         )
 
         # Step 4: Define a custom colormap with a sharp transition at sea level (elevation = 0)
-        colors_undersea = plt.cm.Blues_r(np.linspace(0, 0.25, 128))
-        colors_land = plt.cm.terrain(np.linspace(0.25, 1, 128))
-        all_colors = np.vstack((colors_undersea, colors_land))
+        if sea_level_fraction > 0.0:
+            sea_num = int(256 * sea_level_fraction)
+            colors_undersea = plt.cm.Blues_r(np.linspace(start=0, stop=0.25, num=sea_num))
+            colors_land = plt.cm.terrain(np.linspace(start=0.25, stop=1, num=256-sea_num))
+            all_colors = np.vstack((colors_undersea, colors_land))
+        else:
+            all_colors = plt.cm.terrain(np.linspace(0.25, 1, 256))
         world_cmap = mcolors.LinearSegmentedColormap.from_list('world_cmap', all_colors)
 
         # Step 5: Plot the elevation data on the equirectangular projection
@@ -148,3 +167,58 @@ class Plot:
         plt.tight_layout()
         plt.show()
 
+
+
+    @staticmethod
+    def animate(coordinates, variable_history, title: str = '', resolution: int = 360, vmin=None, vmax=None):
+        """
+        Create an animation to visualize the variable changes over time.
+
+        Parameters:
+        - lat_grid, lon_grid: Latitude and Longitude grids from meshgrid.
+        - variable_history: List of 2D arrays, each representing a value at one time step.
+        """
+        fig, ax = plt.subplots(figsize=(12, 6))
+        ax.set_title(title)
+        ax.set_xlabel("Longitude")
+        ax.set_ylabel("Latitude")
+
+        lon_grid, lat_grid = np.meshgrid(
+            np.linspace(-180, 180, resolution),  # Longitude from -180 to 180 degrees
+            np.linspace(-90, 90, resolution//2)  # Latitude from -90 to 90 degrees
+        )
+        meshgrid = np.stack((lat_grid, lon_grid), axis=-1)
+
+        # Create initial plot with first frame
+        datagrid_values = griddata(
+                        points=coordinates[:,:2],  # Points at which we have data
+                        values=variable_history[0],  # Elevation data values
+                        xi=meshgrid,  # Points to interpolate at
+                        method='cubic'  # 'cubic', 'linear', or 'nearest'
+                    )
+        img = ax.imshow(datagrid_values, extent=(-180, 180, -90, 90), origin='lower', cmap='plasma',
+                        vmin=vmin, vmax=vmax)
+        fig.colorbar(img, label=title)
+
+        # Define the animation update function
+        def update(frame):
+            grid_values = griddata(
+                points=coordinates[:,:2],  # Points at which we have data
+                values=variable_history[frame],  # Elevation data values
+                xi=meshgrid,  # Points to interpolate at
+                method='cubic'  # 'cubic', 'linear', or 'nearest'
+            )
+            img.set_array(grid_values)
+            ax.set_title(f"Frame {frame}")
+            return [img]
+
+        # Create the animation
+        ani = animation.FuncAnimation(fig, update, frames=len(variable_history), blit=True)
+
+        # Save animation as a GIF or mp4
+        nowstr = datetime.today().strftime('%Y-%m-%d_%H-%M-%S')
+        simplified_title = "".join(c for c in title if c.isalnum())
+        ani.save(f'{simplified_title}_history_{nowstr}.gif', writer='pillow', fps=4)
+
+        # Show the animation in the notebook or console
+        plt.show()
