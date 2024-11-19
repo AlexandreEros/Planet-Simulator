@@ -1,6 +1,7 @@
 import numpy as np
-from geodesic_grid import GeodesicGrid
 import noise
+from scipy import constants
+from geodesic_grid import GeodesicGrid
 from vector_utils import cartesian_to_spherical, normalize
 
 class Surface(GeodesicGrid):
@@ -27,8 +28,17 @@ class Surface(GeodesicGrid):
 
             self.normals = self.calculate_normals()
 
+            self.irradiance = np.zeros(shape=len(self.vertices), dtype=np.float64)
+
+            self.Stefan_Boltzmann = constants.Stefan_Boltzmann if 'Boltzmann' not in kwargs else kwargs['Boltzmann']
+            self.temperature = 170.0 + 130.0 * np.cos(np.arcsin(self.vertices[:,2] / np.linalg.norm(self.vertices, axis=-1)))
+            self.heat_capacity = np.full_like(self.irradiance, 1e6)
+            self.emissivity = 0.95
+            self.albedo = np.full_like(self.irradiance, 0.3)
+
         except Exception as err:
             raise Exception(f"Error in the constructor of `Surface`:\n{err}")
+
 
 
     def elevate_terrain(self):
@@ -81,3 +91,16 @@ class Surface(GeodesicGrid):
 
         except Exception as err:
             raise Exception(f"Error calculating normal vectors at vertices on the surface:\n{err}")
+
+
+    def update_irradiance(self, sunlight: np.ndarray):
+        self.irradiance = -np.einsum('j, ij -> i', sunlight, self.normals)
+        self.irradiance = np.fmax(self.irradiance, 0.0)
+
+
+    def update_temperature(self, delta_t: float):
+        Q_absorbed = self.irradiance * (1 - self.albedo)
+        Q_emitted = self.emissivity * self.Stefan_Boltzmann * self.temperature ** 4
+        Q_net = Q_absorbed - Q_emitted
+
+        self.temperature += delta_t * Q_net / self.heat_capacity

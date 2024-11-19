@@ -171,12 +171,10 @@ class StellarSystem:
             body.apply_force(grav_forces[ib])
             body.accelerate(0.5 * delta_t)
 
-            # While we're at it, update the sunlight vector:
-            try:
-                if isinstance(body, Planet):
-                    power_output = self.bodies[0].power
-                    r = np.linalg.norm(body.position)
-                    irradiance = power_output / (4*np.pi*r**2)
-                    body.update_sunlight(delta_t, irradiance)
-            except Exception as err:
-                raise Exception(f"Error updating sunlight:\n{err}")
+            # While we're at it, update:
+            if isinstance(body, Planet):
+                power_output = self.bodies[0].power
+                r = np.linalg.norm(body.position)
+                irradiance = power_output / (4*np.pi*r**2)
+                body.update_sunlight(delta_t, irradiance)
+                body.update_temperature(delta_t)

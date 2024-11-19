@@ -12,6 +12,8 @@ from simulation import Simulation
 
 class Plot:
     def __init__(self, plot_type, *args, **kwargs):
+        if plot_type=='none':
+            self.func = self.nop
         if plot_type=='mesh':
             self.func = self.mesh
         elif plot_type=='orbits':
@@ -32,10 +34,17 @@ class Plot:
             sim = args[0]
             args = (sim.stellar_system.bodies[1].surface.coordinates, sim.irradiance_history['Earth'],)
             kwargs['title'] = 'Irradiance (W/m²)'
-            kwargs['vmax'] = np.amax(sim.irradiance_history['Earth'])
-            kwargs['vmin']= 0.0
+        elif plot_type=='temperature':
+            self.func = self.animate
+            sim = args[0]
+            args = (sim.stellar_system.bodies[1].surface.coordinates, sim.temperature_history['Earth'],)
+            kwargs['title'] = 'Temperature (K)'
+            kwargs['vmax'] = np.amax(args[1])
+            kwargs['vmin']= np.amin(args[1])
 
         self.func(*args, **kwargs)
+
+
 
     @staticmethod
     def mesh(grid: GeodesicGrid) -> None:
@@ -167,6 +176,10 @@ class Plot:
         plt.tight_layout()
         plt.show()
 
+        nowstr = datetime.today().strftime('%Y-%m-%d_%H-%M-%S')
+        simplified_title = "".join(c for c in title if c.isalnum())
+        plt.savefig(f"temp/{simplified_title}_map_{nowstr}.png")
+
 
 
     @staticmethod
@@ -218,7 +231,12 @@ class Plot:
         # Save animation as a GIF or mp4
         nowstr = datetime.today().strftime('%Y-%m-%d_%H-%M-%S')
         simplified_title = "".join(c for c in title if c.isalnum())
-        ani.save(f'{simplified_title}_history_{nowstr}.gif', writer='pillow', fps=4)
+        ani.save(f"temp/{simplified_title}_history_{nowstr}.gif", writer='pillow', fps=4)
 
         # Show the animation in the notebook or console
         plt.show()
+
+
+    @staticmethod
+    def nop(*args, **kwargs):
+        pass

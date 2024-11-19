@@ -32,7 +32,6 @@ class Planet(CelestialBody):
             self.current_angle = 0.0
 
             self.sunlight = self.position / np.linalg.norm(self.position)
-            self.irradiance = np.ndarray(shape=len(self.surface.vertices), dtype=np.float64)
 
         except Exception as err:
             raise Exception(f"Error in the constructor of `Planet`:\n{err}")
@@ -50,12 +49,9 @@ class Planet(CelestialBody):
         # Convert to the planet's rotating frame of reference
         self.sunlight = rotate_vector(absolute_sunlight_vector, self.rotation_axis, -self.current_angle)
         self.sunlight = np.dot(self.sunlight, self.axial_tilt_matrix)
-        # print(f"{self.name}, {24*self.current_angle/(2*np.pi)} h: sunlight = {self.sunlight}")
 
-        try:
-            self.irradiance = -np.einsum('j, ij -> i', self.sunlight, self.surface.normals)
-            self.irradiance = np.fmax(self.irradiance, 0.0)
-        except Exception as err:
-            raise Exception(f"Error calculating dot products in `Planet.update_sunlight`:\n{err}")
+        self.surface.update_irradiance(self.sunlight)
 
-        # print(f"{self.name}, {24*self.current_angle/(2*np.pi)} h: {np.mean(self.irradiance)=}")
+
+    def update_temperature(self, delta_t: float):
+        self.surface.update_temperature(delta_t)

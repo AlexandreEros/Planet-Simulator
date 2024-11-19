@@ -29,7 +29,9 @@ class Simulation:
         self.angle_history = {body.name: np.ndarray((self.n_snapshots,), dtype=np.float64)
                                  for body in self.stellar_system.bodies if body.body_type=='planet'}
 
-        self.irradiance_history = {body.name: np.ndarray((self.n_snapshots,len(body.irradiance)), dtype=np.float64)
+        self.irradiance_history = {body.name: np.ndarray((self.n_snapshots,len(body.surface.irradiance)), dtype=np.float64)
+                                 for body in self.stellar_system.bodies if body.body_type=='planet'}
+        self.temperature_history = {body.name: np.ndarray((self.n_snapshots,len(body.surface.temperature)), dtype=np.float64)
                                  for body in self.stellar_system.bodies if body.body_type=='planet'}
 
 
@@ -52,9 +54,10 @@ class Simulation:
                     self.position_history[body.name][i_snapshot] = body.position
                     self.velocity_history[body.name][i_snapshot] = body.velocity
                     if body.body_type == 'planet':
-                        self.sunlight_vector_history[body.name][i_snapshot] = body.sunlight
-                        self.angle_history[body.name][i_snapshot] = body.current_angle
-                        self.irradiance_history[body.name][i_snapshot] = body.irradiance
+                        # self.sunlight_vector_history[body.name][i_snapshot] = body.sunlight
+                        # self.angle_history[body.name][i_snapshot] = body.current_angle
+                        # self.irradiance_history[body.name][i_snapshot] = body.surface.irradiance
+                        self.temperature_history[body.name][i_snapshot] = body.surface.temperature
                 self.total_angular_momentum_history[i_snapshot] = self.stellar_system.current_total_angular_momentum
 
             self.time += self.delta_t

@@ -26,11 +26,7 @@ def run():
         print(f"Error setting up simulation:\n{err}")
         sys.exit(1)
 
-    try:
-        sim.run()
-    except Exception as err:
-        print(f"Error running simulation at {sim.time} seconds:\n{err}")
-        sys.exit(1)
+    sim.run()
 
     # try:
     Plot(plot_type, sim)
