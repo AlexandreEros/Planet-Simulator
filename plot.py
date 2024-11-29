@@ -18,29 +18,50 @@ class Plot:
             self.func = self.mesh
         elif plot_type=='orbits':
             self.func = self.orbits
+            args = (args[0],)
         elif plot_type=='elevation':
             self.func = self.worldmap
             surf = args[0]
-            coordinates = surf.coordinates
-            elevation = surf.elevation
             kwargs['title'] = 'Elevation (m)'
+            kwargs['cmap'] = surf.cmap
+            kwargs['resolution'] = int(np.ceil(0.03 * len(surf.vertices)))
+            args = (surf.coordinates, surf.elevation)
+        elif plot_type=='albedo':
+            self.func = self.worldmap
+            surf = args[0]
+            kwargs['title'] = 'Albedo'
+            kwargs['resolution'] = int(np.ceil(0.03 * len(surf.vertices)))
+            kwargs['vmax'] = 1
+            kwargs['vmin']= 0
+            args = (surf.coordinates, surf.albedo)
+        elif plot_type=='heat_capacity':
+            self.func = self.worldmap
+            surf = args[0]
+            coordinates = surf.coordinates
+            kwargs['title'] = 'Heat capacity (J/m²·K)'
             kwargs['resolution'] = int(np.ceil(0.03 * max(coordinates.shape)))
-            kwargs['vmax'] = np.amax(elevation) # min(abs(np.amax(elevation)), abs(np.amin(elevation)))
-            kwargs['vmin']= np.amin(elevation) # -kwargs['vmax']
-            kwargs['sea_level_fraction'] = (0 - kwargs['vmin']) / (kwargs['vmax'] - kwargs['vmin'])
-            args = (coordinates, elevation)
+            kwargs['vmax'] = np.amax(surf.heat_capacity)
+            kwargs['vmin'] = np.amin(surf.heat_capacity)
+            args = (coordinates, surf.heat_capacity)
         elif plot_type=='irradiance':
             self.func = self.animate
             sim = args[0]
-            args = (sim.stellar_system.bodies[1].surface.coordinates, sim.irradiance_history['Earth'],)
+            planet = args[1]
+            is_planet = np.array(body.name==planet for body in sim.stellar_system.bodies)
+            planet_idx = np.argwhere(is_planet)[0][0]
+            args = (sim.stellar_system.bodies[planet_idx].surface.coordinates, sim.irradiance_history[planet],)
             kwargs['title'] = 'Irradiance (W/m²)'
         elif plot_type=='temperature':
             self.func = self.animate
             sim = args[0]
-            args = (sim.stellar_system.bodies[1].surface.coordinates, sim.temperature_history['Earth'],)
-            kwargs['title'] = 'Temperature (K)'
-            kwargs['vmax'] = np.amax(args[1])
-            kwargs['vmin']= np.amin(args[1])
+            planet = args[1]
+            temperature = sim.temperature_history[planet] - 273.15
+            is_planet = np.array([body.name==planet for body in sim.stellar_system.bodies])
+            planet_idx = np.argwhere(is_planet)[0][0]
+            args = (sim.stellar_system.bodies[planet_idx].surface.coordinates, temperature,)
+            kwargs['title'] = 'Temperature (ºC)'
+            kwargs['vmax'] = np.amax(temperature)
+            kwargs['vmin'] = np.amin(temperature)
 
         self.func(*args, **kwargs)
 
@@ -129,7 +150,7 @@ class Plot:
 
     @staticmethod
     def worldmap(coordinates: np.ndarray, variable: np.ndarray,
-                 resolution: int = 360, title='', vmin=None, vmax=None, sea_level_fraction = 0.0):
+                 resolution: int = 360, title='', **kwargs):
         """
         Plot the equirectangular projection of the terrain.
 
@@ -141,14 +162,12 @@ class Plot:
 
         coordinates = np.array(coordinates)
 
-        # Step 2: Create a 2D grid for the equirectangular projection
         lon_grid, lat_grid = np.meshgrid(
             np.linspace(-180, 180, resolution),  # Longitude from -180 to 180 degrees
             np.linspace(-90, 90, resolution//2)  # Latitude from -90 to 90 degrees
         )
         meshgrid = np.stack((lat_grid, lon_grid), axis=-1)
 
-        # Step 3: Interpolate elevation data onto the grid
         grid_values = griddata(
             points=coordinates[:,:2],  # Points at which we have data
             values=variable,  # Elevation data values
@@ -156,19 +175,8 @@ class Plot:
             method='cubic'  # 'cubic', 'linear', or 'nearest'
         )
 
-        # Step 4: Define a custom colormap with a sharp transition at sea level (elevation = 0)
-        if sea_level_fraction > 0.0:
-            sea_num = int(256 * sea_level_fraction)
-            colors_undersea = plt.cm.Blues_r(np.linspace(start=0, stop=0.25, num=sea_num))
-            colors_land = plt.cm.terrain(np.linspace(start=0.25, stop=1, num=256-sea_num))
-            all_colors = np.vstack((colors_undersea, colors_land))
-        else:
-            all_colors = plt.cm.terrain(np.linspace(0.25, 1, 256))
-        world_cmap = mcolors.LinearSegmentedColormap.from_list('world_cmap', all_colors)
-
-        # Step 5: Plot the elevation data on the equirectangular projection
         plt.figure(figsize=(12, 6))
-        plt.imshow(grid_values, extent=(-180, 180, -90, 90), origin='lower', cmap=world_cmap, vmin=vmin, vmax=vmax)
+        plt.imshow(grid_values, extent=(-180, 180, -90, 90), origin='lower', **kwargs)
         plt.colorbar(label=title)
         plt.xlabel('Longitude')
         plt.ylabel('Latitude')

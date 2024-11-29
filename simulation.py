@@ -2,19 +2,19 @@ import numpy as np
 import json
 from scipy import constants
 from stellar_system import StellarSystem
-from star import Star
 
 class Simulation:
-    def __init__(self, timestep: float, n_steps: int, steps_between_snapshots: int = 1, body_file = 'bodies.json'):
+    def __init__(self, planet: str, timestep: float, n_steps: int, steps_between_snapshots: int = 1, body_file = 'bodies.json'):
         self.delta_t = timestep
         self.n_steps = n_steps
         self.steps_between_snapshots = steps_between_snapshots
         self.n_snapshots = int(np.ceil(self.n_steps / self.steps_between_snapshots))
 
-        self.G = constants.G
-        self.Boltzmann = constants.Boltzmann
+        self.planet = planet
 
-        self.stellar_system = StellarSystem(self.G)
+        self.G = constants.G
+
+        self.stellar_system = StellarSystem(planet, self.G)
         self.load_bodies_from_file(body_file)
 
         self.time = 0.0
@@ -40,10 +40,7 @@ class Simulation:
         with open(body_file, 'r') as f:
             data = json.load(f)
             for body_data in data['bodies']:
-                try:
-                    self.stellar_system.add_body(**body_data)
-                except Exception as err:
-                    raise Exception(f"Error creating the {body_data['body_type']} '{body_data['name']}':\n{err}")
+                self.stellar_system.add_body(**body_data)
 
 
     def run(self):

@@ -1,6 +1,9 @@
 import numpy as np
 import noise
 from scipy import constants
+import matplotlib.pyplot as plt
+import matplotlib.colors as mcolors
+
 from geodesic_grid import GeodesicGrid
 from vector_utils import cartesian_to_spherical, normalize
 
@@ -22,6 +25,11 @@ class Surface(GeodesicGrid):
             self.vertices *= self.distance[:,None]
             self.elevation = self.distance - self.radius
 
+            self.cmap = self.get_cmap(self.elevation)
+            normalized_elevation = (self.elevation - np.amin(self.elevation)) / (np.amax(self.elevation) - np.amin(self.elevation))
+            self.color = self.cmap(normalized_elevation)
+            self.surface_type = np.apply_along_axis(self.get_surface_type, -1, self.color)
+
             self.coordinates = np.empty_like(self.vertices)
             self.coordinates[:,:2] = np.apply_along_axis(cartesian_to_spherical, -1, self.vertices)
             self.coordinates[:,2] = self.elevation
@@ -30,11 +38,20 @@ class Surface(GeodesicGrid):
 
             self.irradiance = np.zeros(shape=len(self.vertices), dtype=np.float64)
 
-            self.Stefan_Boltzmann = constants.Stefan_Boltzmann if 'Boltzmann' not in kwargs else kwargs['Boltzmann']
-            self.temperature = 170.0 + 130.0 * np.cos(np.arcsin(self.vertices[:,2] / np.linalg.norm(self.vertices, axis=-1)))
-            self.heat_capacity = np.full_like(self.irradiance, 1e6)
+            self.Stefan_Boltzmann = constants.Stefan_Boltzmann
+            self.temperature = 180.0 + 120.0 * np.cos(np.arcsin(self.vertices[:,2] / np.linalg.norm(self.vertices, axis=-1)))
             self.emissivity = 0.95
-            self.albedo = np.full_like(self.irradiance, 0.3)
+
+            if 'albedo' in kwargs: self.albedo = kwargs['albedo']
+            else:
+                # OCEAN, DESERT, VEGETATION, SNOW, LAND
+                albedoes = np.array([0.08, 0.8, 0.2, 0.35, 0.25])
+                self.albedo = albedoes[self.surface_type]  # 0.1 + 0.8 * ((2*self.color[:,0] + 1.5*self.color[:,1] + self.color[:,2])  / 4.5) ** 3
+
+            if 'heat_capacity' in kwargs: self.heat_capacity = kwargs['heat_capacity']
+            else:
+                heat_capacities = np.array([4.18e6, 2.0e5, 2.5e6, 1.0e6, 1.5e6])
+                self.heat_capacity = heat_capacities[self.surface_type]  # 1e5 + 1e6 * ((1-self.color[:,0]) + (1-self.color[:,1])) ** 2
 
         except Exception as err:
             raise Exception(f"Error in the constructor of `Surface`:\n{err}")
@@ -59,6 +76,39 @@ class Surface(GeodesicGrid):
 
         except Exception as err:
             raise Exception(f"Error calculating surface elevations:\n{err}")
+
+
+    @staticmethod
+    def get_cmap(elevation):
+        underwater_fraction = (0.0 - np.amin(elevation)) / (np.amax(elevation) - np.amin(elevation))
+        if underwater_fraction > 0.0:
+            sea_num = int(256 * underwater_fraction)
+            colors_undersea = plt.cm.Blues_r(np.linspace(start=0, stop=0.25, num=sea_num))
+            colors_land = plt.cm.terrain(np.linspace(start=0.25, stop=1, num=256-sea_num))
+            all_colors = np.vstack((colors_undersea, colors_land))
+        else:
+            all_colors = plt.cm.terrain(np.linspace(0.25, 1, 256))
+        return mcolors.LinearSegmentedColormap.from_list('world_cmap', all_colors)
+
+    @staticmethod
+    def get_surface_type(rgba) -> int:
+        OCEAN = 0
+        DESERT = 1
+        VEGETATION = 2
+        SNOW = 3
+        LAND = 4
+
+        r, g, b = rgba[0], rgba[1], rgba[2]
+        if b > r and b > g:
+            return OCEAN  # Blue-ish colors represent oceans
+        elif r > g and r > b:
+            return DESERT  # Brownish colors represent desert/high elevation
+        elif g > r and g > b:
+            return VEGETATION  # Green-ish colors represent vegetation
+        elif r > 0.8 and g > 0.8 and b > 0.8:
+            return SNOW  # White colors represent snow or ice
+        else:
+            return LAND  # Default to land for other color values
 
 
     def calculate_normals(self):

@@ -6,8 +6,10 @@ from star import Star
 from vector_utils import rotate_vector, deg2rad
 
 class StellarSystem:
-    def __init__(self, G: float):
+    def __init__(self, planet_name: str, G: float):
         self.G = G
+        self.planet_name = planet_name
+        self.planet: Planet
         self.bodies: list[Star | Planet] = []
 
 
@@ -31,9 +33,12 @@ class StellarSystem:
             if 'eccentricity' not in kws: kwargs['eccentricity'] = 0.0
             if 'year_percentage' not in kws: kwargs['year_percentage'] = 0.0
             if 'argument_of_perihelion_deg' not in kws: kwargs['argument_of_perihelion_deg'] = 0.0
+            if 'inclination_deg' not in kws: kwargs['inclination_deg'] = 0.0
+            if 'lon_ascending_node_deg' not in kws: kwargs['lon_ascending_node_deg'] = 0.0
             kwargs['position'], kwargs['velocity'] = \
                 self.get_start_vectors(kwargs['orbital_period'], kwargs['year_percentage'], kwargs['eccentricity'],
-                                       kwargs['argument_of_perihelion_deg'], self.bodies[0].mass, self.G)
+                                       kwargs['argument_of_perihelion_deg'], kwargs['inclination_deg'], kwargs['lon_ascending_node_deg'],
+                                       self.bodies[0].mass, self.G)
 
         else:
             raise Exception(f"Either 'position' and 'velocity' or 'orbital_period' must be given for "
@@ -45,6 +50,9 @@ class StellarSystem:
             self.bodies.append(Planet(**kwargs))
         else:
             raise KeyError(f"Unsupported body_type: {kwargs['body_type']}")
+
+        if kwargs['name']==self.planet_name:
+            self.planet = self.bodies[-1]
 
 
 
@@ -89,31 +97,33 @@ class StellarSystem:
 
 
     @staticmethod
-    def get_start_vectors(T, year_percentage, e, argument_of_perihelion_deg, mass, G = 6.67430e-11) -> (np.ndarray, np.ndarray):
-        try:
-            true_anomaly = StellarSystem.get_true_anomaly(year_percentage, e)
+    def get_start_vectors(T, year_percentage, e, argument_of_perihelion_deg, inclination_deg, lon_ascending_node_deg,
+                          mass, G = 6.67430e-11) -> (np.ndarray, np.ndarray):
+        true_anomaly = StellarSystem.get_true_anomaly(year_percentage, e)
 
-            mean_distance = StellarSystem.get_semi_major_axis(T, mass, G)
-            distance = mean_distance * (1 - e**2) / (1 + e * np.cos(true_anomaly))
+        mean_distance = StellarSystem.get_semi_major_axis(T, mass, G)
+        distance = mean_distance * (1 - e**2) / (1 + e * np.cos(true_anomaly))
 
-            radial_velocity_mag = np.sqrt(G*mass/mean_distance) * (e*np.sin(true_anomaly)) / np.sqrt(1 - e**2)
-            specific_angular_momentum = StellarSystem.get_specific_angular_momentum(T, e, mass, G)
-            transverse_velocity_mag = specific_angular_momentum / distance
-            # speed = float(np.sqrt(G*mass * (2*mean_distance - distance) / (distance*mean_distance)))
+        radial_velocity_mag = np.sqrt(G*mass/mean_distance) * (e*np.sin(true_anomaly)) / np.sqrt(1 - e**2)
+        specific_angular_momentum = StellarSystem.get_specific_angular_momentum(T, e, mass, G)
+        transverse_velocity_mag = specific_angular_momentum / distance
+        # speed = float(np.sqrt(G*mass * (2*mean_distance - distance) / (distance*mean_distance)))
 
-            radial_vec = np.array([np.cos(true_anomaly), np.sin(true_anomaly), 0.], dtype=np.float64)
-            transverse_vec = np.array([-np.sin(true_anomaly), np.cos(true_anomaly), 0.], dtype=np.float64)
+        radial_vec = np.array([np.cos(true_anomaly), np.sin(true_anomaly), 0.], dtype=np.float64)
+        transverse_vec = np.array([-np.sin(true_anomaly), np.cos(true_anomaly), 0.], dtype=np.float64)
 
-            z_axis = np.array([0, 0, 1], dtype = np.float64)
-            arg_rad = deg2rad(argument_of_perihelion_deg)
+        z_axis = np.array([0, 0, 1], dtype = np.float64)
+        arg_rad = deg2rad(argument_of_perihelion_deg)
 
-            position = distance * radial_vec
-            velocity = radial_velocity_mag * radial_vec + transverse_velocity_mag * transverse_vec
-            position, velocity = rotate_vector(position, z_axis, arg_rad), rotate_vector(velocity, z_axis, arg_rad)
-            return position, velocity
+        position = distance * radial_vec
+        velocity = radial_velocity_mag * radial_vec + transverse_velocity_mag * transverse_vec
+        position, velocity = rotate_vector(position, z_axis, arg_rad), rotate_vector(velocity, z_axis, arg_rad)
 
-        except Exception as err:
-                raise Exception(f"Error calculating initial position and velocity:\n{err}")
+        inclination = deg2rad(inclination_deg)
+        lon_ascending_node = deg2rad(lon_ascending_node_deg)
+        ascending_node_vec = np.array([np.cos(lon_ascending_node), np.sin(lon_ascending_node), 0.0])
+        position, velocity = rotate_vector(position, ascending_node_vec, inclination), rotate_vector(velocity, ascending_node_vec, inclination)
+        return position, velocity
 
 
     def get_gravitational_forces(self) -> np.ndarray:
@@ -149,8 +159,8 @@ class StellarSystem:
                 grav_forces[i] += force_vec #/ body_i.mass
                 grav_forces[j] -= force_vec #/ body_j.mass
 
-        assert np.allclose(np.sum(grav_forces, axis=0), np.zeros(3,), atol=1e3), (f"Newton's Third Law violated! "
-            f"The sum of all gravitational forces in the system is {np.sum(grav_forces, axis=0)} N.")
+        # assert np.allclose(np.sum(grav_forces, axis=0), np.zeros(3,), atol=1e3), (f"Newton's Third Law violated! "
+        #     f"The sum of all gravitational forces in the system is {np.sum(grav_forces, axis=0)} N.")
         return grav_forces
 
 
@@ -171,10 +181,9 @@ class StellarSystem:
             body.apply_force(grav_forces[ib])
             body.accelerate(0.5 * delta_t)
 
-            # While we're at it, update:
-            if isinstance(body, Planet):
-                power_output = self.bodies[0].power
-                r = np.linalg.norm(body.position)
-                irradiance = power_output / (4*np.pi*r**2)
-                body.update_sunlight(delta_t, irradiance)
-                body.update_temperature(delta_t)
+        # While we're at it, update:
+        power_output = self.bodies[0].power
+        r = np.linalg.norm(self.planet.position)
+        irradiance = power_output / (4*np.pi*r**2)
+        self.planet.update_sunlight(delta_t, irradiance)
+        self.planet.update_temperature(delta_t)

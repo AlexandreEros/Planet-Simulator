@@ -6,26 +6,27 @@ from surface import Surface
 
 class Planet(CelestialBody):
     def __init__(self, name: str, body_type: str, radius: float, position: np.ndarray, velocity: np.ndarray, mass: float,
-                 sidereal_day: float, axial_tilt_deg: float, longitude_ascending_node_deg: float, color: str,
+                 sidereal_day: float, axial_tilt_deg: float, season_reference_axis: float, color: str,
                  surface_data: dict,
                  orbital_period: float = None, eccentricity: float = 0.0, year_percentage: float = 0.0,
-                 argument_of_perihelion_deg: float = 0.0,):
+                 argument_of_perihelion_deg: float = 0.0, inclination_deg: float = 0.0, lon_ascending_node_deg: float = 0.0):
                  #resolution: int = 0, noise_scale: float = 1.0, noise_octaves: int = 4, noise_amplitude: float = 0.05):
 
         try:
             super().__init__(name=name, body_type=body_type, position=position, velocity=velocity, mass=mass, color=color,
                      orbital_period=orbital_period, eccentricity=eccentricity, year_percentage=year_percentage,
-                     argument_of_perihelion_deg=argument_of_perihelion_deg)
+                     argument_of_perihelion_deg=argument_of_perihelion_deg, inclination_deg=inclination_deg, lon_ascending_node_deg=lon_ascending_node_deg)
 
             self.sidereal_day = sidereal_day
             self.axial_tilt = deg2rad(axial_tilt_deg)
-            self.longitude_ascending_node = deg2rad(longitude_ascending_node_deg)
+            self.season_reference_axis = season_reference_axis
 
             self.radius = radius
             self.surface = Surface(self.radius, **surface_data)
 
             self.rotation_rate = 2*np.pi / self.sidereal_day
-            self.axial_tilt_matrix = np.dot(rotation_mat_z(self.longitude_ascending_node), rotation_mat_x(self.axial_tilt))
+            self.axial_tilt_matrix = np.dot(rotation_mat_z(2 * np.pi * self.season_reference_axis), rotation_mat_x(self.axial_tilt))
+            self.axial_tilt_matrix = np.dot(self.inclination_matrix, self.axial_tilt_matrix)
             self.rotation_axis = np.dot(self.axial_tilt_matrix, np.array([0, 0, 1], dtype = np.float64))
             self.rotation_axis /= np.linalg.norm(self.rotation_axis)  # Just to be sure
             self.angular_velocity = self.rotation_rate * self.rotation_axis
