@@ -5,8 +5,10 @@
             "body_type": "star",
             "power": 3.86e26,
             "mass": 1.989e30,
-            "position": [0, 0, 0],
-            "velocity": [0, 0, 0],
+            "orbital_data": {
+                "position": [0, 0, 0],
+                "velocity": [0, 0, 0]
+            },
             "color": "gold"
         },
         {
@@ -14,12 +16,14 @@
             "body_type": "planet",
             "radius": 2439700,
             "mass": 3.010e23,
-            "orbital_period": 7.6e6,
-            "eccentricity": 0.2056,
-            "year_percentage": 0.25,
-	        "argument_of_perihelion_deg": 29.124,
-            "inclination_deg": 7.005,
-            "lon_ascending_node_deg": 48.331,
+            "orbital_data": {
+                "orbital_period": 7.6e6,
+                "eccentricity": 0.2056,
+                "year_percentage": 0.25,
+                "argument_of_perihelion_deg": 29.124,
+                "inclination_deg": 7.005,
+                "lon_ascending_node_deg": 48.331
+            },
             "sidereal_day": 5.067e6,
             "axial_tilt_deg": 0.034,
             "season_reference_axis": 48.331,
@@ -39,8 +43,10 @@
             "body_type": "planet",
             "radius": 6378000,
             "mass": 5.972e24,
-            "position": [1.496e11, 0, 0],
-            "velocity": [0, 29780, 0],
+            "orbital_data": {
+                "position": [1.496e11, 0, 0],
+                "velocity": [0, 29780, 0]
+            },
             "sidereal_day": 86400,
             "axial_tilt_deg": 23.5,
             "season_reference_axis": 0,
