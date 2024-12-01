@@ -46,19 +46,16 @@ class Plot:
         elif plot_type=='irradiance':
             self.func = self.animate
             sim = args[0]
-            planet = args[1]
-            is_planet = np.array(body.name==planet for body in sim.stellar_system.bodies)
-            planet_idx = np.argwhere(is_planet)[0][0]
-            args = (sim.stellar_system.bodies[planet_idx].surface.coordinates, sim.irradiance_history[planet],)
+            irradiance = sim.irradiance_history
+            args = (sim.planet.surface.coordinates, irradiance,)
             kwargs['title'] = 'Irradiance (W/m²)'
+            kwargs['vmax'] = np.amax(irradiance)
+            kwargs['vmin'] = np.amin(irradiance)
         elif plot_type=='temperature':
             self.func = self.animate
             sim = args[0]
-            planet = args[1]
-            temperature = sim.temperature_history[planet] - 273.15
-            is_planet = np.array([body.name==planet for body in sim.stellar_system.bodies])
-            planet_idx = np.argwhere(is_planet)[0][0]
-            args = (sim.stellar_system.bodies[planet_idx].surface.coordinates, temperature,)
+            temperature = sim.temperature_history - 273.15
+            args = (sim.planet.surface.coordinates, temperature,)
             kwargs['title'] = 'Temperature (ºC)'
             kwargs['vmax'] = np.amax(temperature)
             kwargs['vmin'] = np.amin(temperature)
@@ -125,7 +122,12 @@ class Plot:
     @staticmethod
     def orbits(sim: Simulation):
         position_history: dict[str, np.ndarray] = sim.position_history
-        bodies: list[CelestialBody] = sim.stellar_system.bodies
+        bodies: list[CelestialBody] = [body for body in sim.stellar_system.bodies if body.name in position_history]
+
+        if sim.planet is not None:
+            target_planet_position = sim.position_history[sim.planet.name].copy()
+            for body in bodies:
+                position_history[body.name] -= target_planet_position
 
         # Create a figure for the plot
         plt.figure(figsize=(10, 6))

@@ -36,7 +36,10 @@ class StellarSystem:
             self.bodies.append(Star(**kwargs))
             self.star = self.bodies[-1]
         elif kwargs['body_type']=='planet':
-            kwargs['parent_mass'] = self.star.mass
+            parent = self.star if 'parent' not in kwargs else self.bodies[self.idx[kwargs['parent']]]
+            kwargs['parent_mass'] = parent.mass
+            kwargs['parent_position'] = parent.position
+            kwargs['parent_velocity'] = parent.velocity
             self.bodies.append(Planet(**kwargs))
         else:
             raise KeyError(f"Unsupported body_type: {kwargs['body_type']}")
@@ -107,8 +110,5 @@ class StellarSystem:
 
         if isinstance(self.planet, Planet):
         # While we're at it, update:
-            power_output = self.bodies[0].power
-            r = np.linalg.norm(self.planet.position)
-            irradiance = power_output / (4*np.pi*r**2)
-            self.planet.update_sunlight(delta_t, irradiance)
+            self.planet.update_sunlight(delta_t, self.star)
             self.planet.update_temperature(delta_t)

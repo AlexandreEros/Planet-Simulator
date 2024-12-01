@@ -6,7 +6,7 @@ from scipy.spatial.transform import Rotation
 
 class CelestialBody:
     def __init__(self, name: str, body_type: str, mass: float, color: str,
-                 orbital_data: dict, parent_mass: float = 0.0):
+                 orbital_data: dict, parent_mass: float = 0.0, parent_position = np.zeros(3), parent_velocity = np.zeros(3)):
         self.name = name
         self.body_type = body_type
         self.mass = mass
@@ -27,7 +27,7 @@ class CelestialBody:
             self.parent_mass = parent_mass
             self.position, self.velocity = self.get_start_vectors(self.orbital_period,
                     self.initial_year_percentage, self.eccentricity, self.argument_of_perihelion, self.inclination,
-                    self.lon_ascending_node, self.parent_mass)
+                    self.lon_ascending_node, self.parent_mass, parent_position, parent_velocity)
 
         ascending_node_vec = np.array([np.cos(self.lon_ascending_node), np.sin(self.lon_ascending_node), 0.0])
         self.inclination_matrix = Rotation.from_rotvec(ascending_node_vec * self.inclination).as_matrix()
@@ -85,7 +85,9 @@ class CelestialBody:
 
     @staticmethod
     def get_start_vectors(T, year_percentage, e, argument_of_perihelion_deg, inclination, lon_ascending_node,
-                          parent_mass, G = 6.67430e-11) -> (np.ndarray, np.ndarray):
+                          parent_mass, parent_position = np.zeros(3), parent_velocity = np.zeros(3), G = 6.67430e-11)\
+            -> (np.ndarray, np.ndarray):
+
         true_anomaly = CelestialBody.get_true_anomaly(year_percentage, e)
 
         mean_distance = CelestialBody.get_semi_major_axis(T, parent_mass, G)
@@ -108,4 +110,7 @@ class CelestialBody:
 
         ascending_node_vec = np.array([np.cos(lon_ascending_node), np.sin(lon_ascending_node), 0.0])
         position, velocity = rotate_vector(position, ascending_node_vec, inclination), rotate_vector(velocity, ascending_node_vec, inclination)
+
+        position += parent_position
+        velocity += parent_velocity
         return position, velocity
