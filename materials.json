@@ -1,0 +1,25 @@
+{
+  "materials": [
+    {
+      "name": "Regolith",
+      "thermal_conductivity": 0.02,
+      "density": 1500,
+      "specific_heat_capacity": 700,
+      "type": "solid"
+    },
+    {
+      "name": "CO2 Ice",
+      "thermal_conductivity": 0.004,
+      "density": 1600,
+      "specific_heat_capacity": 1175,
+      "type": "solid"
+    },
+    {
+      "name": "Martian Atmosphere",
+      "thermal_conductivity": 0.00002,
+      "density": 0.02,
+      "specific_heat_capacity": 830,
+      "type": "gas"
+    }
+  ]
+}

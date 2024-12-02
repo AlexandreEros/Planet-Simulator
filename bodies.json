@@ -35,7 +35,8 @@
                 "noise_amplitude": 4.1e-3,
                 "noise_bias": 1.0,
                 "albedo": 0.068,
-                "heat_capacity": 0.8e6
+                "heat_capacity": 0.8e6,
+                "material_name": "Regolith"
             }
         },
         {
@@ -88,7 +89,8 @@
                 "noise_amplitude": 4.1e-3,
                 "noise_bias": 1.0,
                 "albedo": 0.136,
-                "heat_capacity": 0.8e6
+                "heat_capacity": 0.8e6,
+                "material_name": "Regolith"
             }
         }
     ]

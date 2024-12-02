@@ -1,61 +1,67 @@
-import numpy as np
-import noise
-from scipy import constants
-import matplotlib.pyplot as plt
+import json
 import matplotlib.colors as mcolors
+import matplotlib.pyplot as plt
+import noise
+import numpy as np
+from scipy import constants
 
 from geodesic_grid import GeodesicGrid
 from vector_utils import cartesian_to_spherical, normalize
 
 class Surface(GeodesicGrid):
-    def __init__(self, radius: float, **kwargs): #resolution: int = 0, noise_scale: float = 1.0, noise_octaves: int = 4,
-                 #noise_amplitude: float = 0.05, noise_bias: float = 0.0, noise_offset: list[float] = (0.0, 0.0, 0.0)):
-        try:
-            self.radius = radius
-            self.resolution = 0 if 'resolution' not in kwargs else int(kwargs['resolution'])
-            self.noise_scale = 1.0 if 'noise_scale' not in kwargs else float(kwargs['noise_scale'])
-            self.noise_octaves = 4 if 'noise_octaves' not in kwargs else int(kwargs['noise_octaves'])
-            self.noise_amplitude = 0.05 if 'noise_amplitude' not in kwargs else float(kwargs['noise_amplitude'])
-            self.noise_bias = 0.0 if 'noise_bias' not in kwargs else float(kwargs['noise_bias'])
-            self.noise_offset = (0.0, 0.0, 0.0) if 'noise_offset' not in kwargs else \
-                tuple([float(n.strip(' ')) for n in kwargs['noise_offset'][1:-1].split(',')])
-            super().__init__(self.resolution)
+    def __init__(self, radius: float, **kwargs):
+        self.radius = radius
+        self.resolution = 0 if 'resolution' not in kwargs else int(kwargs['resolution'])
+        super().__init__(self.resolution)
 
-            self.distance = self.elevate_terrain()
-            self.vertices *= self.distance[:,None]
-            self.elevation = self.distance - self.radius
+        self.noise_scale = 1.0 if 'noise_scale' not in kwargs else float(kwargs['noise_scale'])
+        self.noise_octaves = 4 if 'noise_octaves' not in kwargs else int(kwargs['noise_octaves'])
+        self.noise_amplitude = 0.05 if 'noise_amplitude' not in kwargs else float(kwargs['noise_amplitude'])
+        self.noise_bias = 0.0 if 'noise_bias' not in kwargs else float(kwargs['noise_bias'])
+        self.noise_offset = (0.0, 0.0, 0.0) if 'noise_offset' not in kwargs else \
+            tuple([float(n.strip(' ')) for n in kwargs['noise_offset'][1:-1].split(',')])
 
-            self.cmap = self.get_cmap(self.elevation)
-            normalized_elevation = (self.elevation - np.amin(self.elevation)) / (np.amax(self.elevation) - np.amin(self.elevation))
-            self.color = self.cmap(normalized_elevation)
-            self.surface_type = np.apply_along_axis(self.get_surface_type, -1, self.color)
+        self.distance = self.elevate_terrain()
+        self.vertices *= self.distance[:,None]
+        self.elevation = self.distance - self.radius
 
-            self.coordinates = np.empty_like(self.vertices)
-            self.coordinates[:,:2] = np.apply_along_axis(cartesian_to_spherical, -1, self.vertices)
-            self.coordinates[:,2] = self.elevation
+        self.cmap = self.get_cmap(self.elevation)
+        normalized_elevation = (self.elevation - np.amin(self.elevation)) / (np.amax(self.elevation) - np.amin(self.elevation))
+        self.color = self.cmap(normalized_elevation)
+        self.surface_type = np.apply_along_axis(self.get_surface_type, -1, self.color)
 
-            self.normals = self.calculate_normals()
+        self.coordinates = np.empty_like(self.vertices)
+        self.coordinates[:,:2] = np.apply_along_axis(cartesian_to_spherical, -1, self.vertices)
+        self.coordinates[:,2] = self.elevation
 
-            self.irradiance = np.zeros(shape=len(self.vertices), dtype=np.float64)
+        self.normals = self.calculate_normals()
 
-            self.Stefan_Boltzmann = constants.Stefan_Boltzmann
-            self.temperature = 180.0 + 120.0 * np.cos(np.arcsin(self.vertices[:,2] / np.linalg.norm(self.vertices, axis=-1)))
-            self.emissivity = 0.95
+        self.irradiance = np.zeros(shape=len(self.vertices), dtype=np.float64)
 
-            if 'albedo' in kwargs: self.albedo = kwargs['albedo']
-            else:
-                # OCEAN, DESERT, VEGETATION, SNOW, LAND
-                albedoes = np.array([0.08, 0.8, 0.2, 0.35, 0.25])
-                self.albedo = albedoes[self.surface_type]  # 0.1 + 0.8 * ((2*self.color[:,0] + 1.5*self.color[:,1] + self.color[:,2])  / 4.5) ** 3
+        self.Stefan_Boltzmann = constants.Stefan_Boltzmann
+        # self.temperature = 180.0 + 120.0 * np.cos(np.arcsin(self.vertices[:,2] / np.linalg.norm(self.vertices, axis=-1)))
+        self.emissivity = 0.95
 
-            if 'heat_capacity' in kwargs: self.heat_capacity = kwargs['heat_capacity']
-            else:
-                heat_capacities = np.array([4.18e6, 2.0e5, 2.5e6, 1.0e6, 1.5e6])
-                self.heat_capacity = heat_capacities[self.surface_type]  # 1e5 + 1e6 * ((1-self.color[:,0]) + (1-self.color[:,1])) ** 2
+        if 'material_name' in kwargs:
+            self.load_material(kwargs['material_name'])
 
-        except Exception as err:
-            raise Exception(f"Error in the constructor of `Surface`:\n{err}")
+        if 'albedo' in kwargs: self.albedo = kwargs['albedo']
+        else:
+            # OCEAN, DESERT, VEGETATION, SNOW, LAND
+            albedoes = np.array([0.08, 0.8, 0.2, 0.35, 0.25])
+            self.albedo = albedoes[self.surface_type]  # 0.1 + 0.8 * ((2*self.color[:,0] + 1.5*self.color[:,1] + self.color[:,2])  / 4.5) ** 3
 
+        if 'heat_capacity' in kwargs: self.heat_capacity = kwargs['heat_capacity']
+        else:
+            heat_capacities = np.array([4.18e6, 2.0e5, 2.5e6, 1.0e6, 1.5e6])
+            self.heat_capacity = heat_capacities[self.surface_type]  # 1e5 + 1e6 * ((1-self.color[:,0]) + (1-self.color[:,1])) ** 2
+
+
+        self.n_layers = 5 if 'n_layers' not in kwargs else kwargs['n_layers']
+        self.max_depth = 1.0 if 'max_depth' not in kwargs else kwargs['max_depth']
+        self.layer_depths = self.max_depth * (np.logspace(0, 1, self.n_layers, base=2) - 1)
+        self.average_temperature = 210.0
+        self.subsurface_temperature = np.full((len(self.vertices), self.n_layers), self.average_temperature)
 
 
     def elevate_terrain(self):
@@ -76,6 +82,18 @@ class Surface(GeodesicGrid):
 
         except Exception as err:
             raise Exception(f"Error calculating surface elevations:\n{err}")
+
+
+    def load_material(self, material_name):
+        with open('materials.json', 'r') as f:
+            materials = json.load(f)['materials']
+            material = next((m for m in materials if m['name'] == material_name), None)
+            if not material:
+                raise ValueError(f"Material '{material_name}' not found in library.")
+
+            self.thermal_conductivity = material['thermal_conductivity']
+            self.density = material['density']
+            self.specific_heat_capacity = material['specific_heat_capacity']
 
 
     @staticmethod
@@ -147,10 +165,34 @@ class Surface(GeodesicGrid):
         self.irradiance = -np.einsum('j, ij -> i', sunlight, self.normals)
         self.irradiance = np.fmax(self.irradiance, 0.0)
 
-
-    def update_temperature(self, delta_t: float):
+    def surface_heat_flux(self):
         Q_absorbed = self.irradiance * (1 - self.albedo)
         Q_emitted = self.emissivity * self.Stefan_Boltzmann * self.temperature ** 4
-        Q_net = Q_absorbed - Q_emitted
+        return Q_absorbed - Q_emitted
 
-        self.temperature += delta_t * Q_net / self.heat_capacity
+    def update_temperature(self, delta_t: float):
+        k = self.thermal_conductivity  # (W/m·K)
+        rho = self.density  # (kg/m³)
+        c = self.specific_heat_capacity  # (J/kg·K)
+        alpha = k / (rho * c)  # Thermal diffusivity (m²/s)
+
+        dz = np.diff(self.layer_depths, prepend=0)  # Layer thicknesses
+
+        # Update top layer (surface interaction)
+        self.subsurface_temperature[:, 0] += delta_t * self.surface_heat_flux() / (rho * c * dz[1])
+        # # Update bottom layer
+        # self.subsurface_temperature[:, -1] = self.average_temperature
+
+        # Middle layers
+        self.subsurface_temperature[:, 1:-1] += delta_t * alpha * (
+                  self.subsurface_temperature[:, :-2]
+            - 2 * self.subsurface_temperature[:, 1:-1]
+                + self.subsurface_temperature[:, 2:]
+        ) / dz[1:-1] ** 2
+
+    @property
+    def temperature(self):
+        return self.subsurface_temperature[:,0]
+
+    # def update_temperature(self, delta_t: float):
+    #     self.temperature += delta_t * self.surface_heat_flux() / self.heat_capacity
