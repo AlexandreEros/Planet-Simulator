@@ -35,7 +35,6 @@
                 "noise_amplitude": 4.1e-3,
                 "noise_bias": 1.0,
                 "albedo": 0.068,
-                "blackbody_temperature": 439.6,
                 "material_name": "Mercurian Regolith"
             }
         },
@@ -61,12 +60,13 @@
                 "noise_scale": 1.0,
                 "noise_octaves": 5,
                 "noise_amplitude": 0.01,
-                "noise_bias": -0.1
+                "noise_bias": -0.1,
+                "albedo": 0.3
             }
         },
         {
             "name": "Moon",
-            "body_type": "planet",
+            "body_type": "satellite",
             "parent": "Earth",
             "radius": 1.737e6,
             "mass": 7.346e22,
@@ -89,7 +89,6 @@
                 "noise_amplitude": 4.1e-3,
                 "noise_bias": 1.0,
                 "albedo": 0.136,
-                "blackbody_temperature": 270.4,
                 "material_name": "Lunar Regolith"
             }
         }

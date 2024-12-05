@@ -55,7 +55,7 @@ class Plot:
             self.func = self.animate
             sim = args[0]
             temperature = sim.temperature_history - 273.15
-            temperature = temperature[len(temperature)//2:]
+            # temperature = temperature[len(temperature)//2:]
             coordinates = sim.planet.surface.coordinates
             is_equatorial = np.abs(coordinates[...,0]) < 10
             args = (coordinates, temperature)

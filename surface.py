@@ -43,8 +43,9 @@ class Surface(GeodesicGrid):
         self.max_depth = 4.0 if 'max_depth' not in kwargs else kwargs['max_depth']
         self.layer_depths = self.max_depth * (np.logspace(0, 1, self.n_layers, base=2) - 1)
         self.vertex_area = 4 * np.pi * self.radius ** 2 / len(self.vertices)
-        self.blackbody_temperature = 0.0 if 'blackbody_temperature' not in kwargs else kwargs['blackbody_temperature']
-        self.subsurface_temperature = np.full((len(self.vertices), self.n_layers), self.blackbody_temperature, dtype=np.float64)
+        latitudes = (1-1e-1)*self.coordinates[:,0]  # Latitudes of 90º and -90º have been artificially removed
+        self.blackbody_temperature = kwargs['blackbody_temperature'] * np.cos(np.radians(latitudes)) ** (1/4)
+        self.subsurface_temperature = np.full((len(self.vertices), self.n_layers), self.blackbody_temperature[:,None], dtype=np.float64)
 
 
     def elevate_terrain(self):

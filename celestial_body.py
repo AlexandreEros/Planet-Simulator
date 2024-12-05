@@ -24,10 +24,11 @@ class CelestialBody:
             self.position = np.array(self.orbital_data['position'], dtype=np.float64)
             self.velocity = np.array(self.orbital_data['velocity'], dtype=np.float64)
         else:
-            self.parent_mass = parent_mass
             self.position, self.velocity = self.get_start_vectors(self.orbital_period,
                     self.initial_year_percentage, self.eccentricity, self.argument_of_perihelion, self.inclination,
-                    self.lon_ascending_node, self.parent_mass, parent_position, parent_velocity)
+                    self.lon_ascending_node, parent_mass, parent_position, parent_velocity)
+
+            self.semi_major_axis = self.get_semi_major_axis(self.orbital_period, parent_mass)
 
         ascending_node_vec = np.array([np.cos(self.lon_ascending_node), np.sin(self.lon_ascending_node), 0.0])
         self.inclination_matrix = Rotation.from_rotvec(ascending_node_vec * self.inclination).as_matrix()

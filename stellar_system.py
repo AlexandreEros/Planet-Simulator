@@ -1,8 +1,10 @@
 import numpy as np
 import scipy as sp
+
 from celestial_body import CelestialBody
-from planet import Planet
 from star import Star
+from planet import Planet
+from satellite import Satellite
 from vector_utils import rotate_vector, deg2rad
 
 class StellarSystem:
@@ -27,8 +29,7 @@ class StellarSystem:
 
 
     def add_body(self, **kwargs) -> None:
-        kws = kwargs.keys()
-        for kw in kws:
+        for kw in kwargs:
             if isinstance(kwargs[kw], list):
                 kwargs[kw] = np.array(kwargs[kw], dtype = np.float64)
 
@@ -37,10 +38,12 @@ class StellarSystem:
             self.star = self.bodies[-1]
         elif kwargs['body_type']=='planet':
             parent = self.star if 'parent' not in kwargs else self.bodies[self.idx[kwargs['parent']]]
-            kwargs['parent_mass'] = parent.mass
-            kwargs['parent_position'] = parent.position
-            kwargs['parent_velocity'] = parent.velocity
+            kwargs['star'] = parent
             self.bodies.append(Planet(**kwargs))
+        elif kwargs['body_type'] == 'satellite':
+            parent = self.bodies[self.idx[kwargs['parent']]]
+            kwargs['planet'] = parent
+            self.bodies.append(Satellite(**kwargs))
         else:
             raise KeyError(f"Unsupported body_type: {kwargs['body_type']}")
 
