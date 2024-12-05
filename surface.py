@@ -25,43 +25,26 @@ class Surface(GeodesicGrid):
         self.vertices *= self.distance[:,None]
         self.elevation = self.distance - self.radius
 
-        self.cmap = self.get_cmap(self.elevation)
-        normalized_elevation = (self.elevation - np.amin(self.elevation)) / (np.amax(self.elevation) - np.amin(self.elevation))
-        self.color = self.cmap(normalized_elevation)
-        self.surface_type = np.apply_along_axis(self.get_surface_type, -1, self.color)
-
         self.coordinates = np.empty_like(self.vertices)
         self.coordinates[:,:2] = np.apply_along_axis(cartesian_to_spherical, -1, self.vertices)
         self.coordinates[:,2] = self.elevation
 
         self.normals = self.calculate_normals()
 
-        self.irradiance = np.zeros(shape=len(self.vertices), dtype=np.float64)
 
-        self.Stefan_Boltzmann = constants.Stefan_Boltzmann
-        # self.temperature = 180.0 + 120.0 * np.cos(np.arcsin(self.vertices[:,2] / np.linalg.norm(self.vertices, axis=-1)))
+        self.irradiance = np.zeros(shape=len(self.vertices), dtype=np.float64)
         self.emissivity = 0.95
 
+        self.albedo = 0.0 if 'albedo' not in kwargs else kwargs['albedo']
         if 'material_name' in kwargs:
             self.load_material(kwargs['material_name'])
 
-        if 'albedo' in kwargs: self.albedo = kwargs['albedo']
-        else:
-            # OCEAN, DESERT, VEGETATION, SNOW, LAND
-            albedoes = np.array([0.08, 0.8, 0.2, 0.35, 0.25])
-            self.albedo = albedoes[self.surface_type]  # 0.1 + 0.8 * ((2*self.color[:,0] + 1.5*self.color[:,1] + self.color[:,2])  / 4.5) ** 3
-
-        if 'heat_capacity' in kwargs: self.heat_capacity = kwargs['heat_capacity']
-        else:
-            heat_capacities = np.array([4.18e6, 2.0e5, 2.5e6, 1.0e6, 1.5e6])
-            self.heat_capacity = heat_capacities[self.surface_type]  # 1e5 + 1e6 * ((1-self.color[:,0]) + (1-self.color[:,1])) ** 2
-
-
-        self.n_layers = 5 if 'n_layers' not in kwargs else kwargs['n_layers']
-        self.max_depth = 1.0 if 'max_depth' not in kwargs else kwargs['max_depth']
+        self.n_layers = 10 if 'n_layers' not in kwargs else kwargs['n_layers']
+        self.max_depth = 4.0 if 'max_depth' not in kwargs else kwargs['max_depth']
         self.layer_depths = self.max_depth * (np.logspace(0, 1, self.n_layers, base=2) - 1)
-        self.average_temperature = 210.0
-        self.subsurface_temperature = np.full((len(self.vertices), self.n_layers), self.average_temperature)
+        self.vertex_area = 4 * np.pi * self.radius ** 2 / len(self.vertices)
+        self.blackbody_temperature = 0.0 if 'blackbody_temperature' not in kwargs else kwargs['blackbody_temperature']
+        self.subsurface_temperature = np.full((len(self.vertices), self.n_layers), self.blackbody_temperature, dtype=np.float64)
 
 
     def elevate_terrain(self):
@@ -94,39 +77,6 @@ class Surface(GeodesicGrid):
             self.thermal_conductivity = material['thermal_conductivity']
             self.density = material['density']
             self.specific_heat_capacity = material['specific_heat_capacity']
-
-
-    @staticmethod
-    def get_cmap(elevation):
-        underwater_fraction = (0.0 - np.amin(elevation)) / (np.amax(elevation) - np.amin(elevation))
-        if underwater_fraction > 0.0:
-            sea_num = int(256 * underwater_fraction)
-            colors_undersea = plt.cm.Blues_r(np.linspace(start=0, stop=0.25, num=sea_num))
-            colors_land = plt.cm.terrain(np.linspace(start=0.25, stop=1, num=256-sea_num))
-            all_colors = np.vstack((colors_undersea, colors_land))
-        else:
-            all_colors = plt.cm.terrain(np.linspace(0.25, 1, 256))
-        return mcolors.LinearSegmentedColormap.from_list('world_cmap', all_colors)
-
-    @staticmethod
-    def get_surface_type(rgba) -> int:
-        OCEAN = 0
-        DESERT = 1
-        VEGETATION = 2
-        SNOW = 3
-        LAND = 4
-
-        r, g, b = rgba[0], rgba[1], rgba[2]
-        if b > r and b > g:
-            return OCEAN  # Blue-ish colors represent oceans
-        elif r > g and r > b:
-            return DESERT  # Brownish colors represent desert/high elevation
-        elif g > r and g > b:
-            return VEGETATION  # Green-ish colors represent vegetation
-        elif r > 0.8 and g > 0.8 and b > 0.8:
-            return SNOW  # White colors represent snow or ice
-        else:
-            return LAND  # Default to land for other color values
 
 
     def calculate_normals(self):
@@ -166,9 +116,10 @@ class Surface(GeodesicGrid):
         self.irradiance = np.fmax(self.irradiance, 0.0)
 
     def surface_heat_flux(self):
+        # W/m²
         Q_absorbed = self.irradiance * (1 - self.albedo)
-        Q_emitted = self.emissivity * self.Stefan_Boltzmann * self.temperature ** 4
-        return Q_absorbed - Q_emitted
+        Q_emitted = self.emissivity * constants.Stefan_Boltzmann * (self.temperature / 300) ** 4 * 300**4
+        return (Q_absorbed - Q_emitted)
 
     def update_temperature(self, delta_t: float):
         k = self.thermal_conductivity  # (W/m·K)
@@ -178,17 +129,26 @@ class Surface(GeodesicGrid):
 
         dz = np.diff(self.layer_depths, prepend=0)  # Layer thicknesses
 
-        # Update top layer (surface interaction)
-        self.subsurface_temperature[:, 0] += delta_t * self.surface_heat_flux() / (rho * c * dz[1])
-        # # Update bottom layer
-        # self.subsurface_temperature[:, -1] = self.average_temperature
+        # Top layer (surface interaction)
+        self.subsurface_temperature[:, 0] += delta_t * self.surface_heat_flux() / (rho * c * dz[1] )#* self.vertex_area)
+        heat_loss_to_subsurface = alpha * (self.subsurface_temperature[:,0]-self.subsurface_temperature[:,1]) / dz[1]**2
+        self.subsurface_temperature[:, 0] -= delta_t * heat_loss_to_subsurface
 
         # Middle layers
         self.subsurface_temperature[:, 1:-1] += delta_t * alpha * (
-                  self.subsurface_temperature[:, :-2]
-            - 2 * self.subsurface_temperature[:, 1:-1]
-                + self.subsurface_temperature[:, 2:]
-        ) / dz[1:-1] ** 2
+                  (self.subsurface_temperature[:, :-2]
+                  -self.subsurface_temperature[:, 1:-1]) / dz[1:-1] ** 2
+                + (self.subsurface_temperature[:, 2:]
+                  -self.subsurface_temperature[:, 1:-1]) / dz[2:] ** 2
+        )
+
+        # Bottom layer
+        Q_geothermal = 0.02  # W/m²
+        heat_flux_from_below = Q_geothermal / (rho * c * dz[-1])
+        self.subsurface_temperature[:, -1] += heat_flux_from_below
+        heat_loss_to_above = alpha * (self.subsurface_temperature[:, -2] - self.subsurface_temperature[:, -1]) / dz[-1]**2
+        self.subsurface_temperature[:, -1] -= delta_t * heat_loss_to_above
+
 
     @property
     def temperature(self):

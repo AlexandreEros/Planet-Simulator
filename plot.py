@@ -55,10 +55,21 @@ class Plot:
             self.func = self.animate
             sim = args[0]
             temperature = sim.temperature_history - 273.15
-            args = (sim.planet.surface.coordinates, temperature,)
+            temperature = temperature[len(temperature)//2:]
+            coordinates = sim.planet.surface.coordinates
+            is_equatorial = np.abs(coordinates[...,0]) < 10
+            args = (coordinates, temperature)
             kwargs['title'] = 'Temperature (ºC)'
             kwargs['vmax'] = np.amax(temperature)
             kwargs['vmin'] = np.amin(temperature)
+        elif plot_type=='heat':
+            self.func = self.animate
+            sim = args[0]
+            heat = sim.heat_history
+            args = (sim.planet.surface.coordinates, heat,)
+            kwargs['title'] = 'Heat Flux (W/m²)'
+            kwargs['vmax'] = np.amax(heat)
+            kwargs['vmin'] = np.amin(heat)
 
         self.func(*args, **kwargs)
 
@@ -172,7 +183,7 @@ class Plot:
 
         grid_values = griddata(
             points=coordinates[:,:2],  # Points at which we have data
-            values=variable,  # Elevation data values
+            values=variable,  # Data values
             xi=meshgrid,  # Points to interpolate at
             method='cubic'  # 'cubic', 'linear', or 'nearest'
         )
@@ -215,7 +226,7 @@ class Plot:
         # Create initial plot with first frame
         datagrid_values = griddata(
                         points=coordinates[:,:2],  # Points at which we have data
-                        values=variable_history[0],  # Elevation data values
+                        values=variable_history[0],  # Data values
                         xi=meshgrid,  # Points to interpolate at
                         method='cubic'  # 'cubic', 'linear', or 'nearest'
                     )
@@ -227,7 +238,7 @@ class Plot:
         def update(frame):
             grid_values = griddata(
                 points=coordinates[:,:2],  # Points at which we have data
-                values=variable_history[frame],  # Elevation data values
+                values=variable_history[frame],  # Data values
                 xi=meshgrid,  # Points to interpolate at
                 method='cubic'  # 'cubic', 'linear', or 'nearest'
             )

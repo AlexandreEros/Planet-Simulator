@@ -19,7 +19,7 @@
             "orbital_data": {
                 "orbital_period": 7.6e6,
                 "eccentricity": 0.2056,
-                "year_percentage": 0.25,
+                "year_percentage": 0.5,
                 "argument_of_perihelion_deg": 29.124,
                 "inclination_deg": 7.005,
                 "lon_ascending_node_deg": 48.331
@@ -35,8 +35,8 @@
                 "noise_amplitude": 4.1e-3,
                 "noise_bias": 1.0,
                 "albedo": 0.068,
-                "heat_capacity": 0.8e6,
-                "material_name": "Regolith"
+                "blackbody_temperature": 439.6,
+                "material_name": "Mercurian Regolith"
             }
         },
         {
@@ -73,14 +73,14 @@
             "orbital_data": {
                 "orbital_period": 2.36e6,
                 "eccentricity": 0.0549,
-                "year_percentage": 0.25,
+                "year_percentage": 0.0,
                 "argument_of_perihelion_deg": 29.124,
                 "inclination_deg": 5.145,
-                "lon_ascending_node_deg": 48.331
+                "lon_ascending_node_deg": 0.0
             },
             "sidereal_day": 2.36e6,
             "axial_tilt_deg": 6.687,
-            "season_reference_axis_deg": 48.331,
+            "season_reference_axis_deg": 0.0,
             "color": "#cccccc",
             "surface_data": {
                 "resolution": 4,
@@ -89,8 +89,8 @@
                 "noise_amplitude": 4.1e-3,
                 "noise_bias": 1.0,
                 "albedo": 0.136,
-                "heat_capacity": 0.8e6,
-                "material_name": "Regolith"
+                "blackbody_temperature": 270.4,
+                "material_name": "Lunar Regolith"
             }
         }
     ]

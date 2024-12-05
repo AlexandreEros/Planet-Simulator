@@ -1,10 +1,17 @@
 {
   "materials": [
     {
-      "name": "Regolith",
+      "name": "Mercurian Regolith",
       "thermal_conductivity": 0.02,
+      "density": 1600,
+      "specific_heat_capacity": 800,
+      "type": "solid"
+    },
+    {
+      "name": "Lunar Regolith",
+      "thermal_conductivity": 1.53e-3,
       "density": 1500,
-      "specific_heat_capacity": 700,
+      "specific_heat_capacity": 1.512e3,
       "type": "solid"
     },
     {

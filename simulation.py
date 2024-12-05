@@ -33,6 +33,8 @@ class Simulation:
             self.irradiance_history = np.ndarray((self.n_snapshots,len(self.planet.surface.irradiance)), dtype=np.float64)
         if self.plot_type=='temperature':
             self.temperature_history = np.ndarray((self.n_snapshots,len(self.planet.surface.temperature)), dtype=np.float64)
+        if self.plot_type=='heat':
+            self.heat_history = np.ndarray((self.n_snapshots,len(self.planet.surface.temperature)), dtype=np.float64)
 
 
     def load_bodies_from_file(self, body_file: str):
@@ -58,6 +60,8 @@ class Simulation:
                     self.irradiance_history[i_snapshot] = self.planet.surface.irradiance
                 if self.plot_type=='temperature':
                     self.temperature_history[i_snapshot] = self.planet.surface.temperature
+                if self.plot_type=='heat':
+                    self.heat_history[i_snapshot] = self.planet.surface.surface_heat_flux()
 
             self.time += self.delta_t
             self.stellar_system.update(self.delta_t)
