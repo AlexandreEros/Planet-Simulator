@@ -23,7 +23,7 @@ class Plot:
             self.func = self.worldmap
             surf = args[0]
             kwargs['title'] = 'Elevation (m)'
-            kwargs['cmap'] = surf.cmap
+            kwargs['cmap'] = 'terrain' #surf.cmap
             kwargs['resolution'] = int(np.ceil(0.03 * len(surf.vertices)))
             args = (surf.coordinates, surf.elevation)
         elif plot_type=='albedo':

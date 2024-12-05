@@ -14,7 +14,6 @@
         {
             "name": "Mercury",
             "body_type": "planet",
-            "radius": 2439700,
             "mass": 3.010e23,
             "orbital_data": {
                 "orbital_period": 7.6e6,
@@ -30,6 +29,7 @@
             "color": "gray",
             "surface_data": {
                 "resolution": 4,
+                "radius": 2439700,
                 "noise_scale": 5.0,
                 "noise_octaves": 5,
                 "noise_amplitude": 4.1e-3,
@@ -41,7 +41,6 @@
         {
             "name": "Earth",
             "body_type": "planet",
-            "radius": 6.371e6,
             "mass": 5.972e24,
             "orbital_data": {
                 "orbital_period": 3.15581498e7,
@@ -57,6 +56,7 @@
             "color": "green",
             "surface_data": {
                 "resolution": 5,
+                "radius": 6.371e6,
                 "noise_scale": 1.0,
                 "noise_octaves": 5,
                 "noise_amplitude": 0.01,
@@ -68,7 +68,6 @@
             "name": "Moon",
             "body_type": "satellite",
             "parent": "Earth",
-            "radius": 1.737e6,
             "mass": 7.346e22,
             "orbital_data": {
                 "orbital_period": 2.36e6,
@@ -84,6 +83,7 @@
             "color": "#cccccc",
             "surface_data": {
                 "resolution": 4,
+                "radius": 1.737e6,
                 "noise_scale": 5.0,
                 "noise_octaves": 5,
                 "noise_amplitude": 4.1e-3,

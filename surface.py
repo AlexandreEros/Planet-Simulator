@@ -1,6 +1,4 @@
 import json
-import matplotlib.colors as mcolors
-import matplotlib.pyplot as plt
 import noise
 import numpy as np
 from scipy import constants
@@ -9,10 +7,10 @@ from geodesic_grid import GeodesicGrid
 from vector_utils import cartesian_to_spherical, normalize
 
 class Surface(GeodesicGrid):
-    def __init__(self, radius: float, **kwargs):
-        self.radius = radius
+    def __init__(self, **kwargs):
         self.resolution = 0 if 'resolution' not in kwargs else int(kwargs['resolution'])
-        super().__init__(self.resolution)
+        self.radius = 1.0 if 'radius' not in kwargs else float(kwargs['radius'])
+        super().__init__(self.resolution, self.radius)
 
         self.noise_scale = 1.0 if 'noise_scale' not in kwargs else float(kwargs['noise_scale'])
         self.noise_octaves = 4 if 'noise_octaves' not in kwargs else int(kwargs['noise_octaves'])
@@ -21,9 +19,9 @@ class Surface(GeodesicGrid):
         self.noise_offset = (0.0, 0.0, 0.0) if 'noise_offset' not in kwargs else \
             tuple([float(n.strip(' ')) for n in kwargs['noise_offset'][1:-1].split(',')])
 
-        self.distance = self.elevate_terrain()
-        self.vertices *= self.distance[:,None]
-        self.elevation = self.distance - self.radius
+        self.relative_distance = self.elevate_terrain()
+        self.vertices *= self.relative_distance[:,None]
+        self.elevation = (self.relative_distance - 1.0) * self.radius
 
         self.coordinates = np.empty_like(self.vertices)
         self.coordinates[:,:2] = np.apply_along_axis(cartesian_to_spherical, -1, self.vertices)
@@ -52,7 +50,7 @@ class Surface(GeodesicGrid):
         # Generate elevation using Perlin noise for each vertex
         try:
             elevations = []
-            for vertex in self.vertices:
+            for vertex in self.vertices / self.radius:
                 elevation = noise.pnoise3(vertex[0] * self.noise_scale + self.noise_offset[0],
                                           vertex[1] * self.noise_scale + self.noise_offset[1],
                                           vertex[2] * self.noise_scale + self.noise_offset[2],
@@ -61,8 +59,8 @@ class Surface(GeodesicGrid):
             elevations -= (np.amin(elevations) + np.amax(elevations)) / 2
             elevations *= 0.5 / np.amax(elevations)
             relative_distances = 1 + self.noise_amplitude * (np.array(elevations) + self.noise_bias/2)
-            distances = self.radius * relative_distances
-            return distances
+            # distances = self.radius * relative_distances
+            return relative_distances
 
         except Exception as err:
             raise Exception(f"Error calculating surface elevations:\n{err}")

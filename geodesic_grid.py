@@ -21,10 +21,13 @@ class GeodesicGrid:
     ]
 
 
-    def __init__(self, resolution: int = 0):
+    def __init__(self, resolution: int = 0, radius: float = 1.0):
         try:
-            self.mesh = self.geodesic_subdivide(resolution)
-            self.vertices = self.mesh[0]
+            self.resolution = resolution
+            self.radius = radius
+
+            self.mesh = self.geodesic_subdivide()
+            self.vertices = self.radius * self.mesh[0]
             self.faces = self.mesh[1]
 
             self.neighbors: dict[int, set[int]] = self.build_neighbors()
@@ -41,8 +44,6 @@ class GeodesicGrid:
                 midpoint = (np.array(self.vertices[v1]) + np.array(self.vertices[v2])) / 2.0
                 norm = np.linalg.norm(midpoint)
                 midpoint = midpoint / norm  # Normalize to keep on sphere
-                # edge2midpoint[edge] = len(self.vertices)  # Index of the vertex that will be appended next
-                # self.vertices.append(midpoint.tolist())
                 return midpoint
             except ZeroDivisionError as err:
                 raise ZeroDivisionError(f"Midpoint between vertices {v1} and {v2} has norm 0: {err}")
@@ -56,14 +57,14 @@ class GeodesicGrid:
         # return edge2midpoint[edge]
 
 
-    def geodesic_subdivide(self, depth: int = 0) -> tuple[np.ndarray, np.ndarray]:
+    def geodesic_subdivide(self) -> tuple[np.ndarray, np.ndarray]:
         """
         Subdivide each triangle in the faces list to increase the resolution.
         """
         vertices = [np.array(vertex) for vertex in self.ico_vertices]
         faces = self.ico_faces.copy()
 
-        for _ in range(depth):
+        for _ in range(self.resolution):
             try:
                 new_faces = []
 

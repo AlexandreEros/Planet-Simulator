@@ -7,8 +7,8 @@ from surface import Surface
 from star import Star
 
 class Planet(CelestialBody):
-    def __init__(self, name: str, body_type: str, radius: float, mass: float,
-                 sidereal_day: float, axial_tilt_deg: float, season_reference_axis_deg: float, color: str,
+    def __init__(self, name: str, body_type: str, mass: float, color: str,
+                 sidereal_day: float, axial_tilt_deg: float, season_reference_axis_deg: float,
                  surface_data: dict, orbital_data: dict,
                  star: Star, parent: CelestialBody | None = None):
 
@@ -23,13 +23,13 @@ class Planet(CelestialBody):
         self.axial_tilt = deg2rad(axial_tilt_deg)
         self.season_reference_axis = deg2rad(season_reference_axis_deg)
 
-        self.radius = radius
         self.bond_albedo = surface_data['albedo']
         semi_major_axis = self.semi_major_axis if self.body_type=='planet' else self.parent.semi_major_axis
         self.blackbody_temperature = ((1 - self.bond_albedo) * self.star.power /
                                       (16 * np.pi * constants.Stefan_Boltzmann * semi_major_axis**2)) ** (1/4)
         surface_data['blackbody_temperature'] = self.blackbody_temperature
-        self.surface = Surface(self.radius, **surface_data)
+        self.surface = Surface(**surface_data)
+        self.radius = self.surface.radius
 
         self.rotation_rate = 2*np.pi / self.sidereal_day
         self.axial_tilt_matrix = np.dot(rotation_mat_z(self.season_reference_axis), rotation_mat_x(self.axial_tilt))
