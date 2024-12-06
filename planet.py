@@ -8,7 +8,7 @@ from star import Star
 
 class Planet(CelestialBody):
     def __init__(self, name: str, body_type: str, mass: float, color: str,
-                 sidereal_day: float, axial_tilt_deg: float, season_reference_axis_deg: float,
+                 sidereal_day: float, axial_tilt_deg: float, initial_season_deg: float,
                  surface_data: dict, orbital_data: dict,
                  star: Star, parent: CelestialBody | None = None):
 
@@ -21,7 +21,7 @@ class Planet(CelestialBody):
 
         self.sidereal_day = sidereal_day
         self.axial_tilt = deg2rad(axial_tilt_deg)
-        self.season_reference_axis = deg2rad(season_reference_axis_deg)
+        self.initial_season_rad = deg2rad(initial_season_deg)
 
         self.bond_albedo = surface_data['albedo']
         semi_major_axis = self.semi_major_axis if self.body_type=='planet' else self.parent.semi_major_axis
@@ -32,8 +32,10 @@ class Planet(CelestialBody):
         self.radius = self.surface.radius
 
         self.rotation_rate = 2*np.pi / self.sidereal_day
-        self.axial_tilt_matrix = np.dot(rotation_mat_z(self.season_reference_axis), rotation_mat_x(self.axial_tilt))
-        self.axial_tilt_matrix = np.dot(self.inclination_matrix, self.axial_tilt_matrix)
+        true_anomaly = self.initial_true_anomaly + self.argument_of_perihelion
+        axial_tilt_matrix = rotation_mat_x(self.axial_tilt)
+        axial_tilt_matrix = np.dot(rotation_mat_z(true_anomaly - self.initial_season_rad), axial_tilt_matrix)
+        self.axial_tilt_matrix = np.dot(self.inclination_matrix, axial_tilt_matrix)
         self.rotation_axis = np.dot(self.axial_tilt_matrix, np.array([0, 0, 1], dtype = np.float64))
         self.rotation_axis /= np.linalg.norm(self.rotation_axis)  # Just to be sure
         self.angular_velocity = self.rotation_rate * self.rotation_axis

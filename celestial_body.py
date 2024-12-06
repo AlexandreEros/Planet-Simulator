@@ -16,16 +16,18 @@ class CelestialBody:
 
         self.orbital_period = -1 if 'orbital_period' not in self.orbital_data else self.orbital_data['orbital_period']
         self.eccentricity = 0.0 if 'eccentricity' not in self.orbital_data else self.orbital_data['eccentricity']
-        self.initial_year_percentage = 0.0 if 'year_percentage' not in self.orbital_data else self.orbital_data['year_percentage']
         self.argument_of_perihelion = 0.0 if 'argument_of_perihelion_deg' not in self.orbital_data else np.radians(self.orbital_data['argument_of_perihelion_deg'])
+        self.orbits_since_perihelion = 0.0 if 'orbits_since_perihelion' not in self.orbital_data else self.orbital_data['orbits_since_perihelion']
         self.inclination = 0.0 if 'inclination_deg' not in self.orbital_data else np.radians(self.orbital_data['inclination_deg'])
         self.lon_ascending_node = 0.0 if 'lon_ascending_node_deg' not in self.orbital_data else np.radians(self.orbital_data['lon_ascending_node_deg'])
         if 'position' in self.orbital_data and 'velocity' in self.orbital_data:
             self.position = np.array(self.orbital_data['position'], dtype=np.float64)
             self.velocity = np.array(self.orbital_data['velocity'], dtype=np.float64)
         else:
+            self.initial_true_anomaly = self.get_true_anomaly(self.orbits_since_perihelion, self.eccentricity)
+
             self.position, self.velocity = self.get_start_vectors(self.orbital_period,
-                    self.initial_year_percentage, self.eccentricity, self.argument_of_perihelion, self.inclination,
+                    self.initial_true_anomaly, self.eccentricity, self.argument_of_perihelion, self.inclination,
                     self.lon_ascending_node, parent_mass, parent_position, parent_velocity)
 
             self.semi_major_axis = self.get_semi_major_axis(self.orbital_period, parent_mass)
@@ -75,9 +77,9 @@ class CelestialBody:
         except ValueError as err: raise ValueError(f"Error in `StellarSystem.get_semi_major_axis`:\n{err}")
 
     @staticmethod
-    def get_true_anomaly(year_percentage, e):
+    def get_true_anomaly(orbits_since_perihelion, e):
         try:
-            mean_anomaly = 2 * np.pi * year_percentage
+            mean_anomaly = 2 * np.pi * orbits_since_perihelion
             eccentric_anomaly = sp.optimize.newton(lambda E: mean_anomaly - E + e * np.sin(E), 0)
             true_anomaly = 2 * np.arctan(np.sqrt((1+e)/(1-e)) * np.tan(eccentric_anomaly/2))
             return true_anomaly
@@ -85,11 +87,9 @@ class CelestialBody:
             raise Exception(f"Error in `StellarSystem.get_true_anomaly`:\n{err}")
 
     @staticmethod
-    def get_start_vectors(T, year_percentage, e, argument_of_perihelion, inclination, lon_ascending_node,
+    def get_start_vectors(T, true_anomaly, e, argument_of_perihelion, inclination, lon_ascending_node,
                           parent_mass, parent_position = np.zeros(3), parent_velocity = np.zeros(3), G = 6.67430e-11)\
             -> (np.ndarray, np.ndarray):
-
-        true_anomaly = CelestialBody.get_true_anomaly(year_percentage, e)
 
         mean_distance = CelestialBody.get_semi_major_axis(T, parent_mass, G)
         distance = mean_distance * (1 - e**2) / (1 + e * np.cos(true_anomaly))
