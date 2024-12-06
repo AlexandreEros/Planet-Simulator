@@ -1,6 +1,6 @@
 import numpy as np
 import scipy as sp
-from vector_utils import rotate_vector, deg2rad
+from vector_utils import rotate_vector
 from scipy.spatial.transform import Rotation
 
 
@@ -17,9 +17,9 @@ class CelestialBody:
         self.orbital_period = -1 if 'orbital_period' not in self.orbital_data else self.orbital_data['orbital_period']
         self.eccentricity = 0.0 if 'eccentricity' not in self.orbital_data else self.orbital_data['eccentricity']
         self.initial_year_percentage = 0.0 if 'year_percentage' not in self.orbital_data else self.orbital_data['year_percentage']
-        self.argument_of_perihelion = 0.0 if 'argument_of_perihelion_deg' not in self.orbital_data else deg2rad(self.orbital_data['argument_of_perihelion_deg'])
-        self.inclination = 0.0 if 'inclination_deg' not in self.orbital_data else deg2rad(self.orbital_data['inclination_deg'])
-        self.lon_ascending_node = 0.0 if 'lon_ascending_node_deg' not in self.orbital_data else deg2rad(self.orbital_data['lon_ascending_node_deg'])
+        self.argument_of_perihelion = 0.0 if 'argument_of_perihelion_deg' not in self.orbital_data else np.radians(self.orbital_data['argument_of_perihelion_deg'])
+        self.inclination = 0.0 if 'inclination_deg' not in self.orbital_data else np.radians(self.orbital_data['inclination_deg'])
+        self.lon_ascending_node = 0.0 if 'lon_ascending_node_deg' not in self.orbital_data else np.radians(self.orbital_data['lon_ascending_node_deg'])
         if 'position' in self.orbital_data and 'velocity' in self.orbital_data:
             self.position = np.array(self.orbital_data['position'], dtype=np.float64)
             self.velocity = np.array(self.orbital_data['velocity'], dtype=np.float64)
@@ -85,7 +85,7 @@ class CelestialBody:
             raise Exception(f"Error in `StellarSystem.get_true_anomaly`:\n{err}")
 
     @staticmethod
-    def get_start_vectors(T, year_percentage, e, argument_of_perihelion_deg, inclination, lon_ascending_node,
+    def get_start_vectors(T, year_percentage, e, argument_of_perihelion, inclination, lon_ascending_node,
                           parent_mass, parent_position = np.zeros(3), parent_velocity = np.zeros(3), G = 6.67430e-11)\
             -> (np.ndarray, np.ndarray):
 
@@ -103,11 +103,10 @@ class CelestialBody:
         transverse_vec = np.array([-np.sin(true_anomaly), np.cos(true_anomaly), 0.], dtype=np.float64)
 
         z_axis = np.array([0, 0, 1], dtype = np.float64)
-        arg_rad = deg2rad(argument_of_perihelion_deg)
 
         position = distance * radial_vec
         velocity = radial_velocity_mag * radial_vec + transverse_velocity_mag * transverse_vec
-        position, velocity = rotate_vector(position, z_axis, arg_rad), rotate_vector(velocity, z_axis, arg_rad)
+        position, velocity = rotate_vector(position, z_axis, argument_of_perihelion), rotate_vector(velocity, z_axis, argument_of_perihelion)
 
         ascending_node_vec = np.array([np.cos(lon_ascending_node), np.sin(lon_ascending_node), 0.0])
         position, velocity = rotate_vector(position, ascending_node_vec, inclination), rotate_vector(velocity, ascending_node_vec, inclination)
