@@ -11,7 +11,14 @@
       "name": "Lunar Regolith",
       "thermal_conductivity": 1.53e-3,
       "density": 1500,
-      "specific_heat_capacity": 1.512e3,
+      "specific_heat_capacity": 1512,
+      "type": "solid"
+    },
+    {
+      "name": "Martian Regolith",
+      "thermal_conductivity": 3.9e-2,
+      "density": 1400,
+      "specific_heat_capacity": 741,
       "type": "solid"
     },
     {

@@ -42,6 +42,8 @@ class Simulation:
         with open(body_file, 'r') as f:
             data = json.load(f)
             for body_data in data['bodies']:
+                if body_data['name'] != self.planet_name and 'surface_data' in body_data:
+                    body_data['surface_data']['resolution'] = 0
                 self.stellar_system.add_body(**body_data)
 
 

@@ -18,14 +18,14 @@
             "orbital_data": {
                 "orbital_period": 7.6e6,
                 "eccentricity": 0.2056,
-                "year_percentage": 0.5,
                 "argument_of_perihelion_deg": 29.124,
+                "orbits_since_perihelion": 0.5,
                 "inclination_deg": 7.005,
                 "lon_ascending_node_deg": 48.331
             },
             "sidereal_day": 5.067e6,
             "axial_tilt_deg": 0.034,
-            "season_reference_axis_deg": 48.331,
+            "initial_season_deg": 48.331,
             "color": "gray",
             "surface_data": {
                 "resolution": 4,
@@ -45,22 +45,22 @@
             "orbital_data": {
                 "orbital_period": 3.15581498e7,
                 "eccentricity": 0.0167086,
-                "year_percentage": 0.0,
                 "argument_of_perihelion_deg": 114.20783,
+                "orbits_since_perihelion": 0.0,
                 "inclination_deg": 0.00005,
                 "lon_ascending_node_deg": -11.26064
             },
             "sidereal_day": 8.61641004e4,
             "axial_tilt_deg": 23.4392811,
-            "season_reference_axis_deg": 0.0,
+            "initial_season_deg": 0.0,
             "color": "green",
             "surface_data": {
                 "resolution": 5,
                 "radius": 6.371e6,
                 "noise_scale": 1.0,
                 "noise_octaves": 5,
-                "noise_amplitude": 0.01,
-                "noise_bias": -0.1,
+                "noise_amplitude": 0.003,
+                "noise_bias": -0.08,
                 "albedo": 0.3
             }
         },
@@ -72,14 +72,14 @@
             "orbital_data": {
                 "orbital_period": 2.36e6,
                 "eccentricity": 0.0549,
-                "year_percentage": 0.0,
                 "argument_of_perihelion_deg": 29.124,
+                "orbits_since_perihelion": 0.0,
                 "inclination_deg": 5.145,
                 "lon_ascending_node_deg": 0.0
             },
             "sidereal_day": 2.36e6,
             "axial_tilt_deg": 6.687,
-            "season_reference_axis_deg": 0.0,
+            "initial_season_deg": 0.0,
             "color": "#cccccc",
             "surface_data": {
                 "resolution": 4,
@@ -90,6 +90,33 @@
                 "noise_bias": 1.0,
                 "albedo": 0.136,
                 "material_name": "Lunar Regolith"
+            }
+        },
+        {
+            "name": "Mars",
+            "body_type": "planet",
+            "mass": 6.41693e23,
+            "orbital_data": {
+                "orbital_period": 5.9355072e7,
+                "eccentricity": 0.0934,
+                "argument_of_perihelion_deg": 286.5,
+                "orbits_since_perihelion": 0.0,
+                "inclination_deg": 1.85,
+                "lon_ascending_node_deg": 49.578
+            },
+            "sidereal_day": 8.86427e4,
+            "axial_tilt_deg": 25.19,
+            "initial_season_deg": 0.0,
+            "color": "#b7410e",
+            "surface_data": {
+                "resolution": 5,
+                "radius": 3.3895e6,
+                "noise_scale": 2.0,
+                "noise_octaves": 5,
+                "noise_amplitude": 0.02,
+                "noise_bias": 1.0,
+                "albedo": 0.25,
+                "material_name": "Martian Regolith"
             }
         }
     ]
