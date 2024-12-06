@@ -143,11 +143,13 @@ class Plot:
         # Create a figure for the plot
         plt.figure(figsize=(10, 6))
 
+        masses = np.array([body.mass for body in bodies])
+        minmass = np.amin(masses)
         for body in bodies:
             # Extract positions for Sun and Earth from provided history
             x = position_history[body.name][:, 0]
             y = position_history[body.name][:, 1]
-            plt.plot(x, y, 'o-', label=body.name, color=body.color)
+            plt.plot(x, y, 'o-', label=body.name, color=body.color, markersize=2+np.log(body.mass/minmass))
 
         # Setting labels and title
         plt.xlabel("X Position (m)")
