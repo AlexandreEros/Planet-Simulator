@@ -36,7 +36,8 @@
                 "noise_bias": 1.0,
                 "albedo": 0.068,
                 "material_name": "Mercurian Regolith"
-            }
+            },
+            "atmosphere_data": {}
         },
         {
             "name": "Earth",
@@ -62,6 +63,11 @@
                 "noise_amplitude": 0.003,
                 "noise_bias": -0.08,
                 "albedo": 0.3
+            },
+            "atmosphere_data": {
+                "surface_pressure": 1e5,
+                "n_layers": 32,
+                "material_name": "Earth Atmosphere"
             }
         },
         {
@@ -90,7 +96,8 @@
                 "noise_bias": 1.0,
                 "albedo": 0.136,
                 "material_name": "Lunar Regolith"
-            }
+            },
+            "atmosphere_data": {}
         },
         {
             "name": "Mars",
@@ -117,6 +124,11 @@
                 "noise_bias": 1.0,
                 "albedo": 0.25,
                 "material_name": "Martian Regolith"
+            },
+            "atmosphere_data": {
+                "surface_pressure": 610,
+                "n_layers": 32,
+                "material_name": "Martian Atmosphere"
             }
         }
     ]
