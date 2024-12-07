@@ -44,6 +44,7 @@ class Simulation:
             for body_data in data['bodies']:
                 if body_data['name'] != self.planet_name and 'surface_data' in body_data:
                     body_data['surface_data']['resolution'] = 0
+                    body_data['atmosphere_data']['n_layers'] = 2
                 self.stellar_system.add_body(**body_data)
 
 

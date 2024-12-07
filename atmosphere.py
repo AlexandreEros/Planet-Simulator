@@ -19,7 +19,7 @@ class Atmosphere:
         self.planet_mass = planet_mass
 
         self.n_layers = 16 if 'n_layers' not in kwargs else kwargs['n_layers']
-        self.altitudes = np.logspace(0, np.log10(self.surface.radius/100), num=self.n_layers)-1 + np.amin(self.surface.elevation)
+        self.altitudes = np.logspace(0, np.log10(self.surface.radius/100), num=self.n_layers) - 1.0 # + np.amin(self.surface.elevation)
 
         normalized_vertices = normalize(self.surface.vertices)
         radii = self.altitudes + self.surface.radius
@@ -39,8 +39,6 @@ class Atmosphere:
         self.pressure, self.density, self.temperature = self.initialize_atmosphere()
 
         self.neighbors = self.build_neighbors()
-
-        self.view()
 
 
     @staticmethod
@@ -132,26 +130,3 @@ class Atmosphere:
                     neighbors[(layer_idx, vertex_idx)].add((layer_idx + 1, vertex_idx))
 
         return neighbors
-
-
-    def view(self):
-        plt.plot(self.temperature[:,0]-273.15, self.altitudes / 1000)
-        plt.title("Temperature vs Altitude")
-        plt.xlabel("Temperature (ºC)")
-        plt.ylabel("Altitude (km)")
-        plt.tight_layout()
-        plt.show()
-
-        plt.plot(self.pressure[:,0], self.altitudes / 1000)
-        plt.title("Pressure vs Altitude")
-        plt.xlabel("Pressure (Pa)")
-        plt.ylabel("Altitude (km)")
-        plt.tight_layout()
-        plt.show()
-
-        plt.plot(self.density[:,0], self.altitudes / 1000)
-        plt.title("Density vs Altitude")
-        plt.xlabel("Density (kg/m³)")
-        plt.ylabel("Altitude (km)")
-        plt.tight_layout()
-        plt.show()

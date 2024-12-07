@@ -6,8 +6,10 @@ from scipy.interpolate import griddata
 from datetime import datetime
 
 from celestial_body import CelestialBody
+from planet import Planet
 from geodesic_grid import GeodesicGrid
 from simulation import Simulation
+from atmosphere import Atmosphere
 
 
 class Plot:
@@ -19,6 +21,29 @@ class Plot:
         elif plot_type=='orbits':
             self.func = self.orbits
             args = (args[0],)
+
+        elif plot_type=='atmosphere':
+            planet, vertex = args
+            args = (planet.atmosphere, vertex)
+            self.func = self.atmosphere
+        elif plot_type=='density':
+            planet, layer_idx = args
+            coordinates = planet.surface.coordinates
+            density = planet.atmosphere.density[layer_idx]
+            args = (coordinates, density)
+            altitude = planet.atmosphere.altitudes[layer_idx]
+            kwargs['title'] = f'Air density (kg/m³) at {altitude/1000:.2f} km high'
+            self.func = self.worldmap
+        elif plot_type=='air_temperature':
+            planet, layer_idx = args
+            coordinates = planet.surface.coordinates
+            temperature = planet.atmosphere.temperature[layer_idx] - 273.15
+            args = (coordinates, temperature)
+            altitude = planet.atmosphere.altitudes[layer_idx]
+            kwargs['title'] = f'Temperature (ºC) at {altitude/1000:.2f} km high'
+            kwargs['cmap'] = 'plasma'
+            self.func = self.worldmap
+
         elif plot_type=='elevation':
             self.func = self.worldmap
             surf = args[0]
@@ -43,6 +68,7 @@ class Plot:
             kwargs['vmax'] = np.amax(surf.heat_capacity)
             kwargs['vmin'] = np.amin(surf.heat_capacity)
             args = (coordinates, surf.heat_capacity)
+
         elif plot_type=='irradiance':
             self.func = self.animate
             sim = args[0]
@@ -257,6 +283,30 @@ class Plot:
         ani.save(f"temp/{simplified_title}_history_{nowstr}.gif", writer='pillow', fps=4)
 
         # Show the animation in the notebook or console
+        plt.show()
+
+
+    @staticmethod
+    def atmosphere(atmosphere: Atmosphere, vertex: int = 0):
+        plt.plot(atmosphere.temperature[:,vertex]-273.15, atmosphere.altitudes / 1000)
+        plt.title("Temperature vs Altitude")
+        plt.xlabel("Temperature (ºC)")
+        plt.ylabel("Altitude (km)")
+        plt.tight_layout()
+        plt.show()
+
+        plt.plot(atmosphere.pressure[:,vertex], atmosphere.altitudes / 1000)
+        plt.title("Pressure vs Altitude")
+        plt.xlabel("Pressure (Pa)")
+        plt.ylabel("Altitude (km)")
+        plt.tight_layout()
+        plt.show()
+
+        plt.plot(atmosphere.density[:,vertex], atmosphere.altitudes / 1000)
+        plt.title("Density vs Altitude")
+        plt.xlabel("Density (kg/m³)")
+        plt.ylabel("Altitude (km)")
+        plt.tight_layout()
         plt.show()
 
 
