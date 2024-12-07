@@ -19,7 +19,7 @@ class Atmosphere:
         self.planet_mass = planet_mass
 
         self.n_layers = 16 if 'n_layers' not in kwargs else kwargs['n_layers']
-        self.altitudes = np.logspace(0, np.log10(self.surface.radius/100), num=self.n_layers) - 1.0 # + np.amin(self.surface.elevation)
+        self.altitudes = np.logspace(0, np.log10(self.surface.radius/64), num=self.n_layers) - 1.0 + np.amin(self.surface.elevation)
 
         normalized_vertices = normalize(self.surface.vertices)
         radii = self.altitudes + self.surface.radius
@@ -28,15 +28,19 @@ class Atmosphere:
         self.vertices = np.stack([normalized_vertices * radius for radius in radii], axis=0)
         self.velocity = np.zeros(self.vertices.shape)         # (m/s)
 
-        self.is_underground = self.altitudes[:,None] <= self.surface.elevation
-        self.touches_ground = ~self.is_underground & np.roll(self.is_underground, 1, axis=0)
-
         self.surface_pressure = 0.0 if 'surface_pressure' not in kwargs else kwargs['surface_pressure']
         self.lapse_rate = 0.0 if 'lapse_rate' not in kwargs else kwargs['lapse_rate']
         self.material = self.load_material(kwargs['material_name'])
         self.molar_mass = 0.02896 if 'molar_mass' not in self.material else self.material['molar_mass']
 
         self.pressure, self.density, self.temperature = self.initialize_atmosphere()
+
+        self.is_underground = self.altitudes[:,None] <= self.surface.elevation
+        # self.pressure[self.is_underground] = np.nan
+        # self.density[self.is_underground] = np.nan
+        # self.temperature[self.is_underground] = np.nan
+        self.touches_ground = ~self.is_underground & np.roll(self.is_underground, 1, axis=0)
+        self.layer_where_touches_ground = np.argmax(self.touches_ground, axis=0)
 
         self.neighbors = self.build_neighbors()
 
@@ -130,3 +134,47 @@ class Atmosphere:
                     neighbors[(layer_idx, vertex_idx)].add((layer_idx + 1, vertex_idx))
 
         return neighbors
+
+
+    def exchange_heat_with_surface(self, delta_t: float):
+        """
+        Exchange heat between the surface and the lowest atmospheric layer.
+        :param delta_t: Time step in seconds.
+        """
+        # Constants and parameters
+        k_surface_atmosphere = 10.0  # W/m²·K, approximate heat transfer coefficient
+        specific_heat_air = self.material['isobaric_mass_heat_capacity']  # J/kg·K for air at constant pressure
+
+        # Surface properties
+        surface_temperature = self.surface.temperature
+        # surface_area = self.surface.vertex_area
+
+        layer_indices = self.layer_where_touches_ground
+        vertex_indices = np.arange(self.surface.n_vertices)
+
+        # Lowest atmospheric layer properties
+        atmospheric_temperature = self.temperature[layer_indices, vertex_indices]
+        atmospheric_density = self.density[layer_indices, vertex_indices]
+        # atmospheric_temperature = self.temperature[self.touches_ground]
+        # atmospheric_density = self.density[self.touches_ground]
+        atmospheric_layer_thickness = self.altitudes[layer_indices] - self.altitudes[layer_indices - 1]
+        # atmospheric_layer_thickness = self.altitudes[self.layer_where_touches_ground] - self.altitudes[self.layer_where_touches_ground-1]
+
+        # Heat flux between surface and atmosphere
+        heat_flux = k_surface_atmosphere * (surface_temperature - atmospheric_temperature)
+
+        # Update surface temperature
+        surface_heat_loss = heat_flux  # Total energy lost by the surface
+        self.surface.subsurface_temperature[:, 0] -= (
+            surface_heat_loss / (self.surface.density * self.surface.specific_heat_capacity)
+        ) * delta_t
+
+        # Update atmospheric temperature
+        vacuum = atmospheric_density == 0
+        self.temperature[layer_indices, vertex_indices][~vacuum] += heat_flux[~vacuum] / (
+            specific_heat_air * (atmospheric_density * atmospheric_layer_thickness)[~vacuum]
+        ) * delta_t
+
+        # Ensure temperatures remain physical (e.g., above 0 K)
+        self.temperature[~np.isnan(self.temperature)] = np.fmax(self.temperature[~np.isnan(self.temperature)], 0.0)
+        self.surface.subsurface_temperature[:, 0] = np.fmax(self.surface.subsurface_temperature[:, 0], 0.0)

@@ -116,18 +116,18 @@
             "initial_season_deg": 0.0,
             "color": "#b7410e",
             "surface_data": {
-                "resolution": 5,
+                "resolution": 4,
                 "radius": 3.3895e6,
                 "noise_scale": 2.0,
                 "noise_octaves": 5,
-                "noise_amplitude": 0.02,
+                "noise_amplitude": 0.01,
                 "noise_bias": 1.0,
                 "albedo": 0.25,
                 "material_name": "Martian Regolith"
             },
             "atmosphere_data": {
                 "surface_pressure": 610,
-                "n_layers": 32,
+                "n_layers": 64,
                 "material_name": "Martian Atmosphere"
             }
         }
