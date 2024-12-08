@@ -72,3 +72,4 @@ class Planet(CelestialBody):
     def update_temperature(self, delta_t: float):
         self.surface.update_temperature(delta_t)
         self.atmosphere.exchange_heat_with_surface(delta_t)
+        self.atmosphere.conduct_heat(delta_t)

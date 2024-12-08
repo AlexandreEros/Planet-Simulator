@@ -12,6 +12,7 @@
       "thermal_conductivity": 2.6e-2,
       "molar_mass": 2.896e-2,
       "isobaric_mass_heat_capacity": 1004,
+      "convective_heat_transfer_coefficient": 10.0,
       "type": "gas"
     },
     {
@@ -40,6 +41,7 @@
       "thermal_conductivity": 2e-5,
       "molar_mass": 4.4e-2,
       "isobaric_mass_heat_capacity": 839,
+      "convective_heat_transfer_coefficient": 4.184,
       "type": "gas"
     }
   ]

@@ -120,7 +120,7 @@
                 "radius": 3.3895e6,
                 "noise_scale": 2.0,
                 "noise_octaves": 5,
-                "noise_amplitude": 0.01,
+                "noise_amplitude": 0.005,
                 "noise_bias": 1.0,
                 "albedo": 0.25,
                 "material_name": "Martian Regolith"
@@ -128,6 +128,7 @@
             "atmosphere_data": {
                 "surface_pressure": 610,
                 "n_layers": 64,
+                "top_of_atmosphere": 4e4,
                 "material_name": "Martian Atmosphere"
             }
         }
