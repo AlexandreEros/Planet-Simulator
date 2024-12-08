@@ -36,8 +36,8 @@ def view():
     try:
         if plot_type in ('mesh', 'elevation'):
             args=(Surface(**surface_data),)
-        elif plot_type in ('atmosphere', 'density', 'air_temperature'):
-            sim = Simulation(plot_type, planet_name, 1.0, 1)
+        elif plot_type in ('atmosphere', 'pressure', 'density', 'air_temperature'):
+            sim = Simulation(plot_type, planet_name, 1.0, 100)
             args = (sim.planet, idx)
 
     except Exception as e:

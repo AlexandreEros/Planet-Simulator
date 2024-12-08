@@ -26,6 +26,14 @@ class Plot:
             planet, vertex = args
             args = (planet.atmosphere, vertex)
             self.func = self.atmosphere
+        elif plot_type=='pressure':
+            planet, layer_idx = args
+            coordinates = planet.surface.coordinates
+            pressure = planet.atmosphere.pressure[layer_idx]
+            args = (coordinates, pressure)
+            altitude = planet.atmosphere.altitudes[layer_idx]
+            kwargs['title'] = f'Air pressure (Pa) at {altitude/1000:.2f} km high'
+            self.func = self.worldmap
         elif plot_type=='density':
             planet, layer_idx = args
             coordinates = planet.surface.coordinates
