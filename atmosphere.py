@@ -18,33 +18,31 @@ class Atmosphere:
 
         self.n_layers = 16 if 'n_layers' not in kwargs else kwargs['n_layers']
         # self.altitudes = np.logspace(0, np.log10(self.surface.radius/64), num=self.n_layers) - 1.0 + np.amin(self.surface.elevation)
-        self.top_of_atmosphere = 6e4 if 'top_of_atmosphere' not in kwargs else kwargs['top_of_atmosphere']
-        self.altitudes = np.linspace(
+        temp_top_of_atmosphere = self.surface.radius / 64
+        temp_altitudes = np.linspace(
             np.amin(self.surface.elevation),
-            np.amin(self.surface.elevation) + self.top_of_atmosphere,
+            np.amin(self.surface.elevation) + temp_top_of_atmosphere,
             num=self.n_layers
         )
-
-        normalized_vertices = normalize(self.surface.vertices)
-        radii = self.altitudes + self.surface.radius
-
-        # Layer structure: axis 0 = layer, axis 1 = vertices, axis 2 = vector components (for position and velocity)
-        self.vertices = np.stack([normalized_vertices * radius for radius in radii], axis=0)
 
         self.surface_pressure = 0.0 if 'surface_pressure' not in kwargs else kwargs['surface_pressure']
         self.lapse_rate = 0.0 if 'lapse_rate' not in kwargs else kwargs['lapse_rate']
         self.material = self.load_material(kwargs['material_name'])
         self.molar_mass = 0.02896 if 'molar_mass' not in self.material else self.material['molar_mass']
 
-        self.pressure, self.density, self.temperature = self.initialize_atmosphere()
-        # print(f"{self.top_of_atmosphere=}")
+        # Layer structure: axis 0 = layer, axis 1 = vertices, axis 2 = vector components (for position and velocity)
+        self.altitudes, self.pressure, self.density, self.temperature = self.initialize_atmosphere(temp_altitudes)
+        self.top_of_atmosphere = self.altitudes[-1]
+        normalized_vertices = normalize(self.surface.vertices)
+        radii = self.altitudes + self.surface.radius
+        self.vertices = np.stack([normalized_vertices * radius for radius in radii], axis=0)
 
         self.is_underground = self.altitudes[:,None] <= self.surface.elevation
         self.lowest_layer_above_surface = np.argmin(self.is_underground, axis=0)
 
         self.neighbors = self.build_neighbors()
 
-        # Build the sparse Laplacian matrix for heat conduction
+        # Sparse Laplacian matrix for heat conduction
         self.L = self.build_laplacian_matrix(self.neighbors, self.n_layers, self.surface.n_vertices)
 
 
@@ -58,15 +56,16 @@ class Atmosphere:
         return material
 
 
-    def initialize_atmosphere(self, max_iterations=100, tol=1e-6) -> tuple[np.ndarray, np.ndarray, np.ndarray]:
+    def initialize_atmosphere(self, altitudes, max_iterations=100, tol=1e-6) \
+            -> tuple[np.ndarray, np.ndarray, np.ndarray, np.ndarray]:
         R_specific = constants.R / self.molar_mass  # Specific gas constant (J/kg·K)
-        delta_h = np.diff(self.altitudes, prepend=0)  # Height differences between layers
+        delta_h = np.diff(altitudes, prepend=0)  # Height differences between layers
 
         # Initialize arrays
         shp = (self.n_layers, self.surface.n_vertices)
         pressure = np.full(shp, self.surface_pressure)  # Start with surface pressure
         temperature = np.full(shp, self.surface.temperature)  # Initialize temperature
-        scale_height = np.full(shp, R_specific * temperature / self.grav(self.altitudes[:, None]))
+        scale_height = np.full(shp, R_specific * temperature / self.grav(altitudes[:, None]))
         density = np.full(shp, self.surface_pressure / (self.grav(0) * scale_height))  # Placeholder
 
         # Compute specific heat capacity (cp) assuming diatomic gas (CO2)
@@ -77,7 +76,7 @@ class Atmosphere:
             prev_pressure = pressure.copy()
 
             for layer_idx in range(1, self.n_layers):
-                altitude = self.altitudes[layer_idx]
+                altitude = altitudes[layer_idx]
                 g = self.grav(altitude)
 
                 # Calculate adiabatic lapse rate Γ = g / cp
@@ -85,13 +84,11 @@ class Atmosphere:
 
                 # Update temperature based on adiabatic lapse rate
                 temperature[layer_idx] = temperature[layer_idx - 1] - gamma * delta_h[layer_idx]
-
-                # Ensure temperature doesn't drop below a minimum threshold (e.g., 0 K)
-                temperature[layer_idx] = np.fmax(temperature[layer_idx], 0.0)
+                temperature[layer_idx] = np.fmax(temperature[layer_idx], 1e-6)
 
                 # Update scale height based on new temperature
                 scale_height[layer_idx] = R_specific * temperature[layer_idx] / g
-                vacuum = scale_height[layer_idx] == 0.0
+                vacuum = scale_height[layer_idx] < 1e-15
 
                 # Update pressure based on hydrostatic equilibrium
                 pressure[layer_idx][vacuum] = 0.0
@@ -103,17 +100,15 @@ class Atmosphere:
                 density[layer_idx][vacuum] = 0.0
                 density[layer_idx][~vacuum] = pressure[layer_idx][~vacuum] / (R_specific * temperature[layer_idx][~vacuum])
 
-                if np.any(pressure[layer_idx]<1e-12) or np.any(density[layer_idx]<1e-12):
-                    self.n_layers = layer_idx
-                    self.altitudes = self.altitudes[:self.n_layers]
-                    self.top_of_atmosphere = self.altitudes[-1]
-                    self.vertices = self.vertices[:self.n_layers]
-                    pressure = pressure[:self.n_layers]
-                    density = density[:self.n_layers]
-                    temperature = temperature[:self.n_layers]
-                    prev_pressure = prev_pressure[:self.n_layers]
-                    prev_temperature = prev_temperature[:self.n_layers]
-                    break
+                if np.any(pressure[layer_idx]<1e-15) or np.any(density[layer_idx]<1e-15):
+                # Upper limit of the atmosphere found
+                    top_of_atmosphere = altitudes[layer_idx-1]
+                    altitudes = np.linspace(
+                        np.amin(self.surface.elevation),
+                        top_of_atmosphere,
+                        num=self.n_layers
+                    )
+                    return self.initialize_atmosphere(altitudes)
 
             # Check for convergence based on temperature and pressure
             temp_err = np.linalg.norm(temperature - prev_temperature)
@@ -125,7 +120,7 @@ class Atmosphere:
         else:
             raise ValueError("Atmosphere initialization did not converge within the maximum number of iterations.")
 
-        return pressure, density, temperature
+        return altitudes, pressure, density, temperature
 
     def grav(self, h) -> np.ndarray:
         """
@@ -159,6 +154,7 @@ class Atmosphere:
     def exchange_heat_with_surface(self, delta_t: float):
         """
         Exchange heat between the surface and the lowest atmospheric layer.
+
         :param delta_t: Time step in seconds.
         """
         # Constants and parameters
@@ -196,7 +192,8 @@ class Atmosphere:
 
 
     @staticmethod
-    def build_laplacian_matrix(neighbors, n_layers, n_vertices):
+    def build_laplacian_matrix(neighbors:dict[tuple[int, int], set[tuple[int, int]]],
+                               n_layers: int, n_vertices: int):
         """
         Construct a sparse Laplacian matrix L for the entire atmosphere.
 
@@ -205,6 +202,13 @@ class Atmosphere:
 
         This gives a discrete graph Laplacian. The indexing is:
         i = layer_idx * n_vertices + vertex_idx
+
+        :param neighbors: Dictionary containing the points in the atmosphere vertices
+        that neighbor each point, created by the method `Atmosphere.build_neighbors`
+        :param n_layers: Attribute `Atmosphere.n_layers`, containing the number of
+        layers, or unique altitudes where points are distributed
+        :param n_vertices: Attribute `Surface.n_vertices`, containing the number of
+        vertices on the surface, and by extension, on each layer of the atmosphere.
         """
         n = n_layers * n_vertices
 
@@ -241,17 +245,15 @@ class Atmosphere:
         """
         Perform a conduction step using the sparse Laplacian matrix.
         T_new = T + delta_t * D * L * T
+        :param delta_t: Time step in seconds.
         """
         k_air = self.material['thermal_conductivity']
         cp_air = self.material['isobaric_mass_heat_capacity']
 
         D = sparse.diags_array(k_air / (self.density.flatten() * cp_air))
 
-        # Flatten T
-        T_flat = self.temperature.ravel()
-
         # Apply the Laplacian
-        # dT = D * delta_t * L * T
+        T_flat = self.temperature.ravel()
         dT = delta_t * D.dot(self.L.dot(T_flat))
 
         # Update temperature and ensure non-negative
