@@ -191,28 +191,46 @@ class Atmosphere:
         self.surface.subsurface_temperature[:, 0] = np.fmax(self.surface.subsurface_temperature[:, 0], 0.0)
 
 
-    @staticmethod
-    def build_laplacian_matrix(neighbors:dict[tuple[int, int], set[tuple[int, int]]],
-                               n_layers: int, n_vertices: int):
+    def compute_interface_weight(self, node_i, node_j):
         """
-        Construct a sparse Laplacian matrix L for the entire atmosphere.
+        Compute the interface area Aij between node_i and node_j based on adjacency type.
+        :param node_i: Tuple (layer_idx, vertex_idx) for node i
+        :param node_j: Tuple (layer_idx, vertex_idx) for node j
+        :return: Interface area divided by distance and cell volume Aij / (dij * Vi)
+        """
+        R = self.surface.radius
+        layer_idx = max(node_i[0], node_j[0])
+        h_l = self.altitudes[layer_idx]
+        if node_i[0] != node_j[0]:
+            h_min = self.altitudes[min(node_i[0], node_j[0])]
+            A_layer = 4 * np.pi * (R + h_l) ** 2
+            A_node = A_layer / self.surface.n_vertices
+            cell_volume = 4/3 * np.pi * ((R+h_l)**3 - (R+h_min)**3) / self.surface.n_vertices
+            if cell_volume==0:
+                raise ZeroDivisionError(f"{h_l=};\n{h_min=}")
+            return A_node / ((h_l-h_min) * cell_volume)
 
-        We'll create a matrix of size (N, N) where N = n_layers * n_vertices.
-        For each cell, L[i,i] = -deg(i), and for each neighbor j of i, L[i,j] = 1.
+        else:
+            # Compute the angular distance between adjacent vertices
+            theta = 2 * np.pi / (self.surface.n_vertices / 10)  # Example for icosahedral grid
+            # Vertical thickness (average between layers)
+            if layer_idx < self.n_layers - 1:
+                h_upper = self.altitudes[layer_idx + 1] - self.altitudes[layer_idx]
+            else:
+                h_upper = self.altitudes[layer_idx] - self.altitudes[layer_idx - 1]
+            A_ij = h_upper * (R + h_l) * theta
+            cell_volume = 4/3 * np.pi * ((R+h_upper)**3 - R**3) / self.surface.n_vertices
+            return A_ij / (R*theta * cell_volume)
 
-        This gives a discrete graph Laplacian. The indexing is:
-        i = layer_idx * n_vertices + vertex_idx
-
-        :param neighbors: Dictionary containing the points in the atmosphere vertices
-        that neighbor each point, created by the method `Atmosphere.build_neighbors`
-        :param n_layers: Attribute `Atmosphere.n_layers`, containing the number of
-        layers, or unique altitudes where points are distributed
-        :param n_vertices: Attribute `Surface.n_vertices`, containing the number of
-        vertices on the surface, and by extension, on each layer of the atmosphere.
+    def build_laplacian_matrix(self, neighbors: dict, n_layers: int, n_vertices: int):
+        """
+        Construct a sparse weighted Laplacian matrix L for the entire atmosphere.
+        :param neighbors: Dictionary containing neighbor nodes and adjacency types
+        :param n_layers: Number of atmospheric layers
+        :param n_vertices: Number of vertices per layer
+        :return: Sparse CSR Laplacian matrix
         """
         n = n_layers * n_vertices
-
-        # We'll collect row, col, data for sparse matrix construction
         row_indices = []
         col_indices = []
         data = []
@@ -223,21 +241,28 @@ class Atmosphere:
         for layer_idx in range(n_layers):
             for vertex_idx in range(n_vertices):
                 i = flat_idx(layer_idx, vertex_idx)
-                nbrs = neighbors[(layer_idx, vertex_idx)]
-                degree = len(nbrs)
+                current_node = (layer_idx, vertex_idx)
+                nbrs = neighbors[current_node]
 
-                # L[i,i] = -degree
+                degree = 0.0  # To accumulate the weighted degrees
+                for neighbor in nbrs:
+                    j = flat_idx(neighbor[0], neighbor[1])
+                    weight = self.compute_interface_weight(current_node, neighbor)
+
+                    # Off-diagonal entry
+                    row_indices.append(i)
+                    col_indices.append(j)
+                    data.append(weight)
+
+                    # Accumulate degree
+                    degree += weight
+
+                # Diagonal entry
                 row_indices.append(i)
                 col_indices.append(i)
                 data.append(-degree)
 
-                # L[i,j] = 1 for each neighbor j
-                for (nl, nv) in nbrs:
-                    j = flat_idx(nl, nv)
-                    row_indices.append(i)
-                    col_indices.append(j)
-                    data.append(1.0)
-
+        # Create the sparse Laplacian matrix
         L = sparse.csr_matrix((data, (row_indices, col_indices)), shape=(n, n))
         return L
 

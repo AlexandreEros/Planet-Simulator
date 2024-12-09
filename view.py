@@ -14,12 +14,19 @@ def view():
         planet_name = sys.argv[1]
         plot_type = 'elevation'
         idx: int = 0
+        timestep: float = 1.0
+        n_steps: int = 100
+
         if len(sys.argv) > 2:
             plot_type = sys.argv[2]
         if len(sys.argv) > 3:
             idx = int(sys.argv[3])
         if len(sys.argv) > 4:
-            raise TypeError(f"Surface.__init__() takes from 2 to 4 positional arguments but {len(sys.argv)} were given.")
+            timestep = float(sys.argv[4])
+        if len(sys.argv) > 5:
+            n_steps = int(sys.argv[5])
+        if len(sys.argv) > 6:
+            raise TypeError(f"Surface.__init__() takes from 2 to 6 positional arguments but {len(sys.argv)} were given.")
 
         with open('bodies.json', 'r') as f:
             data = json.load(f)
@@ -37,7 +44,7 @@ def view():
         if plot_type in ('mesh', 'elevation'):
             args=(Surface(**surface_data),)
         elif plot_type in ('atmosphere', 'pressure', 'density', 'air_temperature'):
-            sim = Simulation(plot_type, planet_name, 1.0, 100)
+            sim = Simulation(plot_type, planet_name, timestep, n_steps)
             args = (sim.planet, idx)
 
     except Exception as e:

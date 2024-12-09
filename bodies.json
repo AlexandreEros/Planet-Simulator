@@ -64,11 +64,7 @@
                 "noise_bias": -0.08,
                 "albedo": 0.3
             },
-            "atmosphere_data": {
-                "surface_pressure": 1e5,
-                "n_layers": 32,
-                "material_name": "Earth Atmosphere"
-            }
+            "atmosphere_data": {}
         },
         {
             "name": "Moon",
