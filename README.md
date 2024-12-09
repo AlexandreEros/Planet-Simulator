@@ -70,13 +70,16 @@ python view.py [planet_name] [plot_type] [index] [timestep] [n_steps]
 - `idx`: Index of the surface vertex (air column) being described in `atmosphere` plots, or of the layer of the 
 atmosphere in `pressure`, `density` or `air_temperature` plots.
 
-## Example
+## Examples
+View the elevation map of the Mars-like planet, in an equirectangular projection:
+```bash
+python view.py Mars
+```
 Simulate Mars' surface temperature changes over a period of four days, and visualize the results as an animation with 
 one frame for each hour:
 ```bash
 python run.py temperature Mars 600 1122 6
 ```
-
 Simulate the orbits of all celestial bodies added so far over a period of slightly under one Martian year, and mark the 
 bodies' positions every 160 (36000 * 16 / 3600) hours:
 ```bash
