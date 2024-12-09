@@ -8,6 +8,14 @@
       "type": "solid"
     },
     {
+      "name": "Earth Atmosphere",
+      "thermal_conductivity": 2.6e-2,
+      "molar_mass": 2.896e-2,
+      "isobaric_mass_heat_capacity": 1004,
+      "convective_heat_transfer_coefficient": 10.0,
+      "type": "gas"
+    },
+    {
       "name": "Lunar Regolith",
       "thermal_conductivity": 1.53e-3,
       "density": 1500,
@@ -16,9 +24,9 @@
     },
     {
       "name": "Martian Regolith",
-      "thermal_conductivity": 3.9e-2,
-      "density": 1400,
-      "specific_heat_capacity": 741,
+      "thermal_conductivity": 1.47e-1,
+      "density": 1520,
+      "specific_heat_capacity": 850,
       "type": "solid"
     },
     {
@@ -30,9 +38,10 @@
     },
     {
       "name": "Martian Atmosphere",
-      "thermal_conductivity": 0.00002,
-      "density": 0.02,
-      "specific_heat_capacity": 830,
+      "thermal_conductivity": 2e-5,
+      "molar_mass": 4.4e-2,
+      "isobaric_mass_heat_capacity": 839,
+      "convective_heat_transfer_coefficient": 4.184,
       "type": "gas"
     }
   ]

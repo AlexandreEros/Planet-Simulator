@@ -3,13 +3,14 @@ from scipy import constants
 
 from vector_utils import deg2rad, rotate_vector, normalize, rotation_mat_x, rotation_mat_y, rotation_mat_z
 from celestial_body import CelestialBody
-from surface import Surface
 from star import Star
+from surface import Surface
+from atmosphere import Atmosphere
 
 class Planet(CelestialBody):
     def __init__(self, name: str, body_type: str, mass: float, color: str,
                  sidereal_day: float, axial_tilt_deg: float, initial_season_deg: float,
-                 surface_data: dict, orbital_data: dict,
+                 surface_data: dict, orbital_data: dict, atmosphere_data: dict,
                  star: Star, parent: CelestialBody | None = None):
 
         self.star = star
@@ -28,8 +29,16 @@ class Planet(CelestialBody):
         self.blackbody_temperature = ((1 - self.bond_albedo) * self.star.power /
                                       (16 * np.pi * constants.Stefan_Boltzmann * semi_major_axis**2)) ** (1/4)
         surface_data['blackbody_temperature'] = self.blackbody_temperature
+
         self.surface = Surface(**surface_data)
+
         self.radius = self.surface.radius
+
+        self.is_airless = True
+        if 'surface_pressure' in atmosphere_data and atmosphere_data['surface_pressure'] > 0.0:
+            self.is_airless = False
+            self.atmosphere = Atmosphere(self.surface, self.mass, **atmosphere_data)
+            self.surface.f_GH = self.atmosphere.f_GH
 
         self.rotation_rate = 2*np.pi / self.sidereal_day
         true_anomaly = self.initial_true_anomaly + self.argument_of_perihelion
@@ -65,3 +74,6 @@ class Planet(CelestialBody):
 
     def update_temperature(self, delta_t: float):
         self.surface.update_temperature(delta_t)
+        if not self.is_airless:
+            self.atmosphere.exchange_heat_with_surface(delta_t)
+            self.atmosphere.conduct_heat(delta_t)

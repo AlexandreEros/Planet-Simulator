@@ -45,6 +45,8 @@ class Surface(GeodesicGrid):
         self.blackbody_temperature = kwargs['blackbody_temperature'] * np.cos(np.radians(latitudes)) ** (1/4)
         self.subsurface_temperature = np.full((len(self.vertices), self.n_layers), self.blackbody_temperature[:,None], dtype=np.float64)
 
+        self.f_GH = 0.0  # Greenhouse factor; will be updated by `Planet` if the planet has an atmosphere.
+
 
     def elevate_terrain(self):
         # Generate elevation using Perlin noise for each vertex
@@ -118,7 +120,7 @@ class Surface(GeodesicGrid):
         # W/m²
         Q_absorbed = self.irradiance * (1 - self.albedo)
         Q_emitted = self.emissivity * constants.Stefan_Boltzmann * (self.temperature / 300) ** 4 * 300**4
-        return (Q_absorbed - Q_emitted)
+        return Q_absorbed - Q_emitted * (1 - self.f_GH)
 
     def update_temperature(self, delta_t: float):
         k = self.thermal_conductivity  # (W/m·K)

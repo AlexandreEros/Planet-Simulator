@@ -36,7 +36,8 @@
                 "noise_bias": 1.0,
                 "albedo": 0.068,
                 "material_name": "Mercurian Regolith"
-            }
+            },
+            "atmosphere_data": {}
         },
         {
             "name": "Earth",
@@ -62,7 +63,8 @@
                 "noise_amplitude": 0.003,
                 "noise_bias": -0.08,
                 "albedo": 0.3
-            }
+            },
+            "atmosphere_data": {}
         },
         {
             "name": "Moon",
@@ -90,7 +92,8 @@
                 "noise_bias": 1.0,
                 "albedo": 0.136,
                 "material_name": "Lunar Regolith"
-            }
+            },
+            "atmosphere_data": {}
         },
         {
             "name": "Mars",
@@ -109,14 +112,22 @@
             "initial_season_deg": 0.0,
             "color": "#b7410e",
             "surface_data": {
-                "resolution": 5,
+                "resolution": 4,
                 "radius": 3.3895e6,
                 "noise_scale": 2.0,
                 "noise_octaves": 5,
-                "noise_amplitude": 0.02,
+                "noise_amplitude": 0.005,
                 "noise_bias": 1.0,
                 "albedo": 0.25,
                 "material_name": "Martian Regolith"
+            },
+            "atmosphere_data": {
+                "surface_pressure": 610,
+                "n_layers": 64,
+                "top_of_atmosphere": 4e4,
+                "greenhouse_efficiency": 1e-5,
+                "chi_CO2": 1.0,
+                "material_name": "Martian Atmosphere"
             }
         }
     ]

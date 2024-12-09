@@ -30,6 +30,9 @@ class GeodesicGrid:
             self.vertices = self.radius * self.mesh[0]
             self.faces = self.mesh[1]
 
+            self.n_vertices = len(self.vertices)
+            self.n_faces = len(self.faces)
+
             self.neighbors: dict[int, set[int]] = self.build_neighbors()
 
         except Exception as err:
