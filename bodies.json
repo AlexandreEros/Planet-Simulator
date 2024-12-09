@@ -125,6 +125,8 @@
                 "surface_pressure": 610,
                 "n_layers": 64,
                 "top_of_atmosphere": 4e4,
+                "greenhouse_efficiency": 1e-5,
+                "chi_CO2": 1.0,
                 "material_name": "Martian Atmosphere"
             }
         }

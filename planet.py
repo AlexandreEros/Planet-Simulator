@@ -36,8 +36,9 @@ class Planet(CelestialBody):
 
         self.is_airless = True
         if 'surface_pressure' in atmosphere_data and atmosphere_data['surface_pressure'] > 0.0:
-            self.atmosphere = Atmosphere(self.surface, self.mass, **atmosphere_data)
             self.is_airless = False
+            self.atmosphere = Atmosphere(self.surface, self.mass, **atmosphere_data)
+            self.surface.f_GH = self.atmosphere.f_GH
 
         self.rotation_rate = 2*np.pi / self.sidereal_day
         true_anomaly = self.initial_true_anomaly + self.argument_of_perihelion

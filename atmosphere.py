@@ -29,6 +29,9 @@ class Atmosphere:
         self.lapse_rate = 0.0 if 'lapse_rate' not in kwargs else kwargs['lapse_rate']
         self.material = self.load_material(kwargs['material_name'])
         self.molar_mass = 0.02896 if 'molar_mass' not in self.material else self.material['molar_mass']
+        self.k_GH = 1e-5 if 'greenhouse_efficiency' not in kwargs else kwargs['greenhouse_efficiency']
+        self.chi_CO2 = 1.0 if 'chi_CO2' not in kwargs else kwargs['chi_CO2']  # CO2 dominance
+        self.f_GH = self.k_GH * self.surface_pressure * (self.chi_CO2 / self.molar_mass)  # Greenhouse factor
 
         # Layer structure: axis 0 = layer, axis 1 = vertices, axis 2 = vector components (for position and velocity)
         self.altitudes, self.pressure, self.density, self.temperature = self.initialize_atmosphere(temp_altitudes)
@@ -41,6 +44,7 @@ class Atmosphere:
         self.lowest_layer_above_surface = np.argmin(self.is_underground, axis=0)
 
         self.neighbors = self.build_neighbors()
+
 
         # Sparse Laplacian matrix for heat conduction
         self.L = self.build_laplacian_matrix(self.neighbors, self.n_layers, self.surface.n_vertices)

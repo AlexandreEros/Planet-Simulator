@@ -24,9 +24,9 @@
     },
     {
       "name": "Martian Regolith",
-      "thermal_conductivity": 3.9e-2,
-      "density": 1400,
-      "specific_heat_capacity": 741,
+      "thermal_conductivity": 1.47e-1,
+      "density": 1520,
+      "specific_heat_capacity": 850,
       "type": "solid"
     },
     {
