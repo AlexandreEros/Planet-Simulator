@@ -41,9 +41,8 @@ class Planet(CelestialBody):
             self.surface.f_GH = self.atmosphere.f_GH
 
         self.rotation_rate = 2*np.pi / self.sidereal_day
-        true_anomaly = self.initial_true_anomaly + self.argument_of_perihelion
         axial_tilt_matrix = rotation_mat_x(self.axial_tilt)
-        axial_tilt_matrix = np.dot(rotation_mat_z(true_anomaly - self.initial_season_rad), axial_tilt_matrix)
+        axial_tilt_matrix = np.dot(rotation_mat_z(self.true_anomaly - self.initial_season_rad), axial_tilt_matrix)
         self.axial_tilt_matrix = np.dot(self.inclination_matrix, axial_tilt_matrix)
         self.rotation_axis = np.dot(self.axial_tilt_matrix, np.array([0, 0, 1], dtype = np.float64))
         self.rotation_axis /= np.linalg.norm(self.rotation_axis)  # Just to be sure

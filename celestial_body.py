@@ -17,17 +17,15 @@ class CelestialBody:
         self.orbital_period = -1 if 'orbital_period' not in self.orbital_data else self.orbital_data['orbital_period']
         self.eccentricity = 0.0 if 'eccentricity' not in self.orbital_data else self.orbital_data['eccentricity']
         self.argument_of_perihelion = 0.0 if 'argument_of_perihelion_deg' not in self.orbital_data else np.radians(self.orbital_data['argument_of_perihelion_deg'])
-        self.orbits_since_perihelion = 0.0 if 'orbits_since_perihelion' not in self.orbital_data else self.orbital_data['orbits_since_perihelion']
+        self.true_anomaly = 0.0 if 'true_anomaly_deg' not in self.orbital_data else np.radians(self.orbital_data['true_anomaly_deg'])
         self.inclination = 0.0 if 'inclination_deg' not in self.orbital_data else np.radians(self.orbital_data['inclination_deg'])
         self.lon_ascending_node = 0.0 if 'lon_ascending_node_deg' not in self.orbital_data else np.radians(self.orbital_data['lon_ascending_node_deg'])
         if 'position' in self.orbital_data and 'velocity' in self.orbital_data:
             self.position = np.array(self.orbital_data['position'], dtype=np.float64)
             self.velocity = np.array(self.orbital_data['velocity'], dtype=np.float64)
         else:
-            self.initial_true_anomaly = self.get_true_anomaly(self.orbits_since_perihelion, self.eccentricity)
-
             self.position, self.velocity = self.get_start_vectors(self.orbital_period,
-                    self.initial_true_anomaly, self.eccentricity, self.argument_of_perihelion, self.inclination,
+                    self.true_anomaly, self.eccentricity, self.argument_of_perihelion, self.inclination,
                     self.lon_ascending_node, parent_mass, parent_position, parent_velocity)
 
             self.semi_major_axis = self.get_semi_major_axis(self.orbital_period, parent_mass)
@@ -76,31 +74,23 @@ class CelestialBody:
             raise ZeroDivisionError(f"Division by zero in `StellarSystem.get_semi_major_axis`: `T` (orbital period) is 0 or inf.")
         except ValueError as err: raise ValueError(f"Error in `StellarSystem.get_semi_major_axis`:\n{err}")
 
-    @staticmethod
-    def get_true_anomaly(orbits_since_perihelion, e):
-        try:
-            mean_anomaly = 2 * np.pi * orbits_since_perihelion
-            eccentric_anomaly = sp.optimize.newton(lambda E: mean_anomaly - E + e * np.sin(E), 0)
-            true_anomaly = 2 * np.arctan(np.sqrt((1+e)/(1-e)) * np.tan(eccentric_anomaly/2))
-            return true_anomaly
-        except Exception as err:
-            raise Exception(f"Error in `StellarSystem.get_true_anomaly`:\n{err}")
 
     @staticmethod
-    def get_start_vectors(T, true_anomaly, e, argument_of_perihelion, inclination, lon_ascending_node,
+    def get_start_vectors(orbital_period, true_anomaly, eccentricity, argument_of_perihelion, inclination, lon_ascending_node,
                           parent_mass, parent_position = np.zeros(3), parent_velocity = np.zeros(3), G = 6.67430e-11)\
             -> (np.ndarray, np.ndarray):
+        angle_since_perihelion = true_anomaly - argument_of_perihelion
 
-        mean_distance = CelestialBody.get_semi_major_axis(T, parent_mass, G)
-        distance = mean_distance * (1 - e**2) / (1 + e * np.cos(true_anomaly))
+        mean_distance = CelestialBody.get_semi_major_axis(orbital_period, parent_mass, G)
+        distance = mean_distance * (1 - eccentricity**2) / (1 + eccentricity * np.cos(angle_since_perihelion))
 
-        radial_velocity_mag = np.sqrt(G*parent_mass/mean_distance) * (e*np.sin(true_anomaly)) / np.sqrt(1 - e**2)
-        specific_angular_momentum = CelestialBody.get_specific_angular_momentum(T, e, parent_mass, G)
+        radial_velocity_mag = np.sqrt(G*parent_mass/mean_distance) * (eccentricity*np.sin(angle_since_perihelion)) / np.sqrt(1 - eccentricity**2)
+        specific_angular_momentum = CelestialBody.get_specific_angular_momentum(orbital_period, eccentricity, parent_mass, G)
         transverse_velocity_mag = specific_angular_momentum / distance
         # speed = float(np.sqrt(G*parent_mass * (2*mean_distance - distance) / (distance*mean_distance)))
 
-        radial_vec = np.array([np.cos(true_anomaly), np.sin(true_anomaly), 0.], dtype=np.float64)
-        transverse_vec = np.array([-np.sin(true_anomaly), np.cos(true_anomaly), 0.], dtype=np.float64)
+        radial_vec = np.array([np.cos(angle_since_perihelion), np.sin(angle_since_perihelion), 0.], dtype=np.float64)
+        transverse_vec = np.array([-np.sin(angle_since_perihelion), np.cos(angle_since_perihelion), 0.], dtype=np.float64)
 
         z_axis = np.array([0, 0, 1], dtype = np.float64)
 

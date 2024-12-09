@@ -19,7 +19,7 @@
                 "orbital_period": 7.6e6,
                 "eccentricity": 0.2056,
                 "argument_of_perihelion_deg": 29.124,
-                "orbits_since_perihelion": 0.5,
+                "true_anomaly_deg": 209.124,
                 "inclination_deg": 7.005,
                 "lon_ascending_node_deg": 48.331
             },
@@ -47,7 +47,7 @@
                 "orbital_period": 3.15581498e7,
                 "eccentricity": 0.0167086,
                 "argument_of_perihelion_deg": 114.20783,
-                "orbits_since_perihelion": 0.0,
+                "true_anomaly_deg": 0.0,
                 "inclination_deg": 0.00005,
                 "lon_ascending_node_deg": -11.26064
             },
@@ -75,7 +75,7 @@
                 "orbital_period": 2.36e6,
                 "eccentricity": 0.0549,
                 "argument_of_perihelion_deg": 29.124,
-                "orbits_since_perihelion": 0.0,
+                "true_anomaly_deg": 0.0,
                 "inclination_deg": 5.145,
                 "lon_ascending_node_deg": 0.0
             },
@@ -103,7 +103,7 @@
                 "orbital_period": 5.9355072e7,
                 "eccentricity": 0.0934,
                 "argument_of_perihelion_deg": 286.5,
-                "orbits_since_perihelion": 0.0,
+                "true_anomaly_deg": 286.5,
                 "inclination_deg": 1.85,
                 "lon_ascending_node_deg": 49.578
             },
