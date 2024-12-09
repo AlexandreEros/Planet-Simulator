@@ -84,6 +84,12 @@ python view.py Mars
 ```
 ![Mars-like planet elevation map](images/mars-like_elevation.png)
 
+View the temperature, pressure, and density profiles of the atmosphere of the Mars-like planet:
+```bash
+python -m view Mars atmosphere
+```
+![Mars-like atmosphere profiles](images/mars-like_atmosphere_profiles.png)
+
 Simulate Mars' surface temperature changes over a period of four days, and visualize the results as an animation with 
 one frame for each hour:
 ```bash

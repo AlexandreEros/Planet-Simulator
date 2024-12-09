@@ -296,24 +296,19 @@ class Plot:
 
     @staticmethod
     def atmosphere(atmosphere: Atmosphere, vertex: int = 0):
-        plt.plot(atmosphere.temperature[:,vertex]-273.15, atmosphere.altitudes / 1000)
-        plt.title("Temperature vs Altitude")
-        plt.xlabel("Temperature (ºC)")
-        plt.ylabel("Altitude (km)")
-        plt.tight_layout()
-        plt.show()
+        fig, (ax0, ax1, ax2) = plt.subplots(1, 3, sharey='row')
+        fig.set_figwidth(12.0)
 
-        plt.plot(atmosphere.pressure[:,vertex], atmosphere.altitudes / 1000)
-        plt.title("Pressure vs Altitude")
-        plt.xlabel("Pressure (Pa)")
-        plt.ylabel("Altitude (km)")
-        plt.tight_layout()
-        plt.show()
+        ax0.plot(atmosphere.temperature[:,vertex]-273.15, atmosphere.altitudes / 1000)
+        ax0.set_ylabel("Altitude (km)")
+        ax0.set_xlabel("Temperature (ºC)")
 
-        plt.plot(atmosphere.density[:,vertex], atmosphere.altitudes / 1000)
-        plt.title("Density vs Altitude")
-        plt.xlabel("Density (kg/m³)")
-        plt.ylabel("Altitude (km)")
+        ax1.plot(atmosphere.pressure[:,vertex], atmosphere.altitudes / 1000)
+        ax1.set_xlabel("Pressure (Pa)")
+
+        ax2.plot(atmosphere.density[:,vertex], atmosphere.altitudes / 1000)
+        ax2.set_xlabel("Density (kg/m³)")
+
         plt.tight_layout()
         plt.show()
 
