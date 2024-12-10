@@ -19,13 +19,16 @@
                 "orbital_period": 7.6e6,
                 "eccentricity": 0.2056,
                 "argument_of_perihelion_deg": 29.124,
-                "true_anomaly_deg": 209.124,
+                "true_anomaly_deg": 0.0,
                 "inclination_deg": 7.005,
                 "lon_ascending_node_deg": 48.331
             },
-            "sidereal_day": 5.067e6,
-            "axial_tilt_deg": 0.034,
-            "initial_season_deg": 48.331,
+            "rotation_data": {
+                "sidereal_day": 5.067e6,
+                "axial_tilt_deg": 0.034,
+                "initial_season_deg": 0.0,
+                "subsolar_point_longitude": -60.0
+            },
             "color": "gray",
             "surface_data": {
                 "resolution": 4,
@@ -51,9 +54,11 @@
                 "inclination_deg": 0.00005,
                 "lon_ascending_node_deg": -11.26064
             },
-            "sidereal_day": 8.61641004e4,
-            "axial_tilt_deg": 23.4392811,
-            "initial_season_deg": 0.0,
+            "rotation_data": {
+                "sidereal_day": 8.61641004e4,
+                "axial_tilt_deg": 23.4392811,
+                "initial_season_deg": 0.0
+            },
             "color": "green",
             "surface_data": {
                 "resolution": 5,
@@ -75,13 +80,14 @@
                 "orbital_period": 2.36e6,
                 "eccentricity": 0.0549,
                 "argument_of_perihelion_deg": 29.124,
-                "true_anomaly_deg": 0.0,
+                "phase_deg": 90.0,
                 "inclination_deg": 5.145,
                 "lon_ascending_node_deg": 0.0
             },
-            "sidereal_day": 2.36e6,
-            "axial_tilt_deg": 6.687,
-            "initial_season_deg": 0.0,
+            "rotation_data": {
+                "axial_tilt_deg": 6.687,
+                "initial_season_deg": 0.0
+            },
             "color": "#cccccc",
             "surface_data": {
                 "resolution": 4,
@@ -107,9 +113,11 @@
                 "inclination_deg": 1.85,
                 "lon_ascending_node_deg": 49.578
             },
-            "sidereal_day": 8.86427e4,
-            "axial_tilt_deg": 25.19,
-            "initial_season_deg": 0.0,
+            "rotation_data": {
+                "sidereal_day": 8.86427e4,
+                "axial_tilt_deg": 25.19,
+                "initial_season_deg": 90.0
+            },
             "color": "#b7410e",
             "surface_data": {
                 "resolution": 4,

@@ -79,18 +79,17 @@ class CelestialBody:
     def get_start_vectors(orbital_period, true_anomaly, eccentricity, argument_of_perihelion, inclination, lon_ascending_node,
                           parent_mass, parent_position = np.zeros(3), parent_velocity = np.zeros(3), G = 6.67430e-11)\
             -> (np.ndarray, np.ndarray):
-        angle_since_perihelion = true_anomaly - argument_of_perihelion
 
         mean_distance = CelestialBody.get_semi_major_axis(orbital_period, parent_mass, G)
-        distance = mean_distance * (1 - eccentricity**2) / (1 + eccentricity * np.cos(angle_since_perihelion))
+        distance = mean_distance * (1 - eccentricity**2) / (1 + eccentricity * np.cos(true_anomaly))
 
-        radial_velocity_mag = np.sqrt(G*parent_mass/mean_distance) * (eccentricity*np.sin(angle_since_perihelion)) / np.sqrt(1 - eccentricity**2)
+        radial_velocity_mag = np.sqrt(G*parent_mass/mean_distance) * (eccentricity*np.sin(true_anomaly)) / np.sqrt(1 - eccentricity**2)
         specific_angular_momentum = CelestialBody.get_specific_angular_momentum(orbital_period, eccentricity, parent_mass, G)
         transverse_velocity_mag = specific_angular_momentum / distance
         # speed = float(np.sqrt(G*parent_mass * (2*mean_distance - distance) / (distance*mean_distance)))
 
-        radial_vec = np.array([np.cos(angle_since_perihelion), np.sin(angle_since_perihelion), 0.], dtype=np.float64)
-        transverse_vec = np.array([-np.sin(angle_since_perihelion), np.cos(angle_since_perihelion), 0.], dtype=np.float64)
+        radial_vec = np.array([np.cos(true_anomaly), np.sin(true_anomaly), 0.], dtype=np.float64)
+        transverse_vec = np.array([-np.sin(true_anomaly), np.cos(true_anomaly), 0.], dtype=np.float64)
 
         z_axis = np.array([0, 0, 1], dtype = np.float64)
 

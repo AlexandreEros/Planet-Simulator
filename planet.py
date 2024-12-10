@@ -9,8 +9,7 @@ from atmosphere import Atmosphere
 
 class Planet(CelestialBody):
     def __init__(self, name: str, body_type: str, mass: float, color: str,
-                 sidereal_day: float, axial_tilt_deg: float, initial_season_deg: float,
-                 surface_data: dict, orbital_data: dict, atmosphere_data: dict,
+                 orbital_data: dict, rotation_data: dict, surface_data: dict, atmosphere_data: dict,
                  star: Star, parent: CelestialBody | None = None):
 
         self.star = star
@@ -20,9 +19,11 @@ class Planet(CelestialBody):
                          orbital_data=orbital_data, parent_mass=self.parent.mass,
                          parent_position=self.parent.position, parent_velocity=self.parent.velocity)
 
-        self.sidereal_day = sidereal_day
-        self.axial_tilt = deg2rad(axial_tilt_deg)
-        self.initial_season_rad = deg2rad(initial_season_deg)
+        self.sidereal_day = rotation_data['sidereal_day']
+        self.axial_tilt = deg2rad(rotation_data['axial_tilt_deg'])
+        self.initial_season_rad = deg2rad(rotation_data['initial_season_deg'])
+        initial_longitude = 0.0 if 'subsolar_point_longitude' not in rotation_data else rotation_data['subsolar_point_longitude']
+        self.current_angle = np.pi + self.initial_season_rad - deg2rad(initial_longitude)
 
         self.bond_albedo = surface_data['albedo']
         semi_major_axis = self.semi_major_axis if self.body_type=='planet' else self.parent.semi_major_axis
@@ -42,12 +43,11 @@ class Planet(CelestialBody):
 
         self.rotation_rate = 2*np.pi / self.sidereal_day
         axial_tilt_matrix = rotation_mat_x(self.axial_tilt)
-        axial_tilt_matrix = np.dot(rotation_mat_z(self.true_anomaly - self.initial_season_rad), axial_tilt_matrix)
+        axial_tilt_matrix = np.dot(rotation_mat_z(self.true_anomaly + self.argument_of_perihelion - self.initial_season_rad), axial_tilt_matrix)
         self.axial_tilt_matrix = np.dot(self.inclination_matrix, axial_tilt_matrix)
         self.rotation_axis = np.dot(self.axial_tilt_matrix, np.array([0, 0, 1], dtype = np.float64))
         self.rotation_axis /= np.linalg.norm(self.rotation_axis)  # Just to be sure
         self.angular_velocity = self.rotation_rate * self.rotation_axis
-        self.current_angle = 0.0
 
         self.sunlight = self.position / np.linalg.norm(self.position)
 
