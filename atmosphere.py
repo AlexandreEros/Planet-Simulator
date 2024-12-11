@@ -43,11 +43,8 @@ class Atmosphere:
         self.is_underground = self.altitudes[:,None] <= self.surface.elevation
         self.lowest_layer_above_surface = np.argmin(self.is_underground, axis=0)
 
-        self.neighbors = self.build_neighbors()
-
-
-        # Sparse Laplacian matrix for heat conduction
-        self.L = self.build_laplacian_matrix(self.neighbors, self.n_layers, self.surface.n_vertices)
+        self.layered_adjacency_matrix = self.build_layered_adjacency_matrix(self.surface.adjacency_matrix)
+        self.laplacian_matrix = self.build_laplacian_matrix(self.layered_adjacency_matrix)
 
 
     @staticmethod
@@ -72,7 +69,6 @@ class Atmosphere:
         scale_height = np.full(shp, R_specific * temperature / self.grav(altitudes[:, None]))
         density = np.full(shp, self.surface_pressure / (self.grav(0) * scale_height))  # Placeholder
 
-        # Compute specific heat capacity (cp) assuming diatomic gas (CO2)
         cp = self.material['isobaric_mass_heat_capacity']
 
         for iteration in range(max_iterations):
@@ -92,17 +88,17 @@ class Atmosphere:
 
                 # Update scale height based on new temperature
                 scale_height[layer_idx] = R_specific * temperature[layer_idx] / g
-                vacuum = scale_height[layer_idx] < 1e-15
+                is_vac = scale_height[layer_idx] < 1e-15
 
                 # Update pressure based on hydrostatic equilibrium
-                pressure[layer_idx][vacuum] = 0.0
-                pressure[layer_idx][~vacuum] = pressure[layer_idx-1][~vacuum] * np.exp(
-                                                            -delta_h[layer_idx] / scale_height[layer_idx][~vacuum]
+                pressure[layer_idx][is_vac] = 0.0
+                pressure[layer_idx][~is_vac] = pressure[layer_idx-1][~is_vac] * np.exp(
+                                                            -delta_h[layer_idx] / scale_height[layer_idx][~is_vac]
                 )
 
                 # Update density using the ideal gas law
-                density[layer_idx][vacuum] = 0.0
-                density[layer_idx][~vacuum] = pressure[layer_idx][~vacuum] / (R_specific * temperature[layer_idx][~vacuum])
+                density[layer_idx][is_vac] = 0.0
+                density[layer_idx][~is_vac] = pressure[layer_idx][~is_vac] / (R_specific * temperature[layer_idx][~is_vac])
 
                 if np.any(pressure[layer_idx]<1e-15) or np.any(density[layer_idx]<1e-15):
                 # Upper limit of the atmosphere found
@@ -135,26 +131,6 @@ class Atmosphere:
         return constants.G * self.planet_mass / (h + self.surface.radius) ** 2
 
 
-    def build_neighbors(self) -> dict[tuple[int, int], set[tuple[int, int]]]:
-        """
-        Extend the surface neighbors dictionary to include vertical neighbors.
-        """
-        neighbors = {}
-
-        for layer_idx in range(self.n_layers):
-            for vertex_idx in range(self.surface.n_vertices):
-                # Copy horizontal neighbors from the surface
-                neighbors[(layer_idx, vertex_idx)] = set([(layer_idx, neighbor) for neighbor in self.surface.neighbors[vertex_idx]])
-
-                # Add vertical neighbors (above and below)
-                if layer_idx > 0:
-                    neighbors[(layer_idx, vertex_idx)].add((layer_idx - 1, vertex_idx))
-                if layer_idx < self.n_layers - 1:
-                    neighbors[(layer_idx, vertex_idx)].add((layer_idx + 1, vertex_idx))
-
-        return neighbors
-
-
     def exchange_heat_with_surface(self, delta_t: float):
         """
         Exchange heat between the surface and the lowest atmospheric layer.
@@ -185,9 +161,9 @@ class Atmosphere:
         ) * delta_t
 
         # Update atmospheric temperature
-        vacuum = atmospheric_density < 1e-9
-        self.temperature[layer_indices, vertex_indices][~vacuum] += heat_flux[~vacuum] / (
-            specific_heat_air * (atmospheric_density * atmospheric_layer_thickness)[~vacuum]
+        is_vac = atmospheric_density < 1e-9
+        self.temperature[layer_indices, vertex_indices][~is_vac] += heat_flux[~is_vac] / (
+            specific_heat_air * (atmospheric_density * atmospheric_layer_thickness)[~is_vac]
         ) * delta_t
 
         # Ensure temperatures remain physical (e.g., above 0 K)
@@ -195,96 +171,79 @@ class Atmosphere:
         self.surface.subsurface_temperature[:, 0] = np.fmax(self.surface.subsurface_temperature[:, 0], 0.0)
 
 
-    def compute_interface_weight(self, node_i, node_j):
+    def build_layered_adjacency_matrix(self, horizontal_adjacency_matrix: sparse.coo_matrix):
         """
-        Compute the interface area Aij between node_i and node_j based on adjacency type.
-        :param node_i: Tuple (layer_idx, vertex_idx) for node i
-        :param node_j: Tuple (layer_idx, vertex_idx) for node j
-        :return: Interface area divided by distance and cell volume Aij / (dij * Vi)
-        """
-        R = self.surface.radius
-        layer_idx = max(node_i[0], node_j[0])
-        h_l = self.altitudes[layer_idx]
-        if node_i[0] != node_j[0]:
-            h_min = self.altitudes[min(node_i[0], node_j[0])]
-            A_layer = 4 * np.pi * (R + h_l) ** 2
-            A_node = A_layer / self.surface.n_vertices
-            cell_volume = 4/3 * np.pi * ((R+h_l)**3 - (R+h_min)**3) / self.surface.n_vertices
-            if cell_volume==0:
-                raise ZeroDivisionError(f"{h_l=};\n{h_min=}")
-            return A_node / ((h_l-h_min) * cell_volume)
+        Given the horizontal adjacency matrix, build another one that also represents vertical connections.
 
-        else:
-            # Compute the angular distance between adjacent vertices
-            theta = 2 * np.pi / (self.surface.n_vertices / 10)  # Example for icosahedral grid
-            # Vertical thickness (average between layers)
-            if layer_idx < self.n_layers - 1:
-                h_upper = self.altitudes[layer_idx + 1] - self.altitudes[layer_idx]
-            else:
-                h_upper = self.altitudes[layer_idx] - self.altitudes[layer_idx - 1]
-            A_ij = h_upper * (R + h_l) * theta
-            cell_volume = 4/3 * np.pi * ((R+h_upper)**3 - R**3) / self.surface.n_vertices
-            return A_ij / (R*theta * cell_volume)
+        :param horizontal_adjacency_matrix: NxN adjacency matrix for the surface where N = surface.n_vertices.
+                                            Only off-diagonal entries represent connection weights. The weights are the
+                                            inverse Euclidean distances.
+                                            Note: horizontal_adjacency_matrix should not contain diagonal entries.
+                                            These will be computed separately when constructing the Laplacian.
 
-    def build_laplacian_matrix(self, neighbors: dict, n_layers: int, n_vertices: int):
+        :return A: The layered adjacency matrix, which includes not only all the information in
+        `horizontal_adjacency_matrix`, but also vertical adjacency connections. It has shape NxN, where
+        N = n_layers * surface.n_vertices
         """
-        Construct a sparse weighted Laplacian matrix L for the entire atmosphere.
-        :param neighbors: Dictionary containing neighbor nodes and adjacency types
-        :param n_layers: Number of atmospheric layers
-        :param n_vertices: Number of vertices per layer
-        :return: Sparse CSR Laplacian matrix
-        """
-        n = n_layers * n_vertices
+        # Horizontal adjacency (block diagonal matrix)
+        A_blocks = [horizontal_adjacency_matrix] * self.n_layers
+        A_block_diag = sparse.block_diag(A_blocks)
+
+        # Add vertical adjacency
         row_indices = []
         col_indices = []
         data = []
 
-        # Helper to get the flat index
-        flat_idx = lambda l_idx, v_idx: l_idx * n_vertices + v_idx
+        for layer_idx in range(self.n_layers - 1):
+            dz = (self.altitudes[layer_idx + 1] - self.altitudes[layer_idx])
+            vertical_weight = 1.0 / dz
 
-        for layer_idx in range(n_layers):
-            for vertex_idx in range(n_vertices):
-                i = flat_idx(layer_idx, vertex_idx)
-                current_node = (layer_idx, vertex_idx)
-                nbrs = neighbors[current_node]
+            for v_idx in range(self.surface.n_vertices):
+                i = layer_idx * self.surface.n_vertices + v_idx
+                j = (layer_idx + 1) * self.surface.n_vertices + v_idx
 
-                degree = 0.0  # To accumulate the weighted degrees
-                for neighbor in nbrs:
-                    j = flat_idx(neighbor[0], neighbor[1])
-                    weight = self.compute_interface_weight(current_node, neighbor)
+                # Add vertical adjacency (symmetric)
+                row_indices.extend([i, j])
+                col_indices.extend([j, i])
+                data.extend([vertical_weight, vertical_weight])
 
-                    # Off-diagonal entry
-                    row_indices.append(i)
-                    col_indices.append(j)
-                    data.append(weight)
+        V = sparse.coo_matrix((data, (row_indices, col_indices)))
 
-                    # Accumulate degree
-                    degree += weight
+        # Combine horizontal and vertical adjacency
+        A = A_block_diag + V
+        return A
 
-                # Diagonal entry
-                row_indices.append(i)
-                col_indices.append(i)
-                data.append(-degree)
+    @staticmethod
+    def build_laplacian_matrix(A: sparse.coo_matrix):
+        """
+        Given the layered adjacency matrix (which represents vertical adjacency as well), build the corresponding
+        Laplacian matrix.
 
-        # Create the sparse Laplacian matrix
-        L = sparse.csr_matrix((data, (row_indices, col_indices)), shape=(n, n))
+        :param A: NxN adjacency matrix for the entire atmosphere, where N = n_layers * surface.n_vertices.
+                  Only off-diagonal entries represent connection weights. The weights are the inverse Euclidean
+                  distances
+        :return L: The Laplacian matrix
+        """
+        # Calculate the degree matrix as the sum of each row
+        row_sum = np.array(A.sum(axis=1))
+        D = sparse.diags(row_sum.ravel(), format='csr')
+
+        # Compute the Laplacian
+        L = D - A
         return L
 
     def conduct_heat(self, delta_t: float):
         """
-        Perform a conduction step using the sparse Laplacian matrix.
-        T_new = T + delta_t * D * L * T
-        :param delta_t: Time step in seconds.
+        Perform a conduction step using the sparse Laplacian matrix:
+        T_new = T + Δt * D * L * T
         """
         k_air = self.material['thermal_conductivity']
         cp_air = self.material['isobaric_mass_heat_capacity']
 
-        D = sparse.diags_array(k_air / (self.density.flatten() * cp_air))
+        # D = diag(k/(ρcp)), where ρ varies by cell.
+        D = sparse.diags(k_air / (self.density.ravel() * cp_air))
 
-        # Apply the Laplacian
         T_flat = self.temperature.ravel()
-        dT = delta_t * D.dot(self.L.dot(T_flat))
-
-        # Update temperature and ensure non-negative
+        dT = delta_t * D.dot(self.laplacian_matrix.dot(T_flat))
         T_new = np.fmax(T_flat + dT, 0.0)
         self.temperature = T_new.reshape(self.n_layers, self.surface.n_vertices)

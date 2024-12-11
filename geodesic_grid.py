@@ -1,5 +1,6 @@
 import numpy as np
 from vector_utils import normalize
+from scipy import sparse
 
 class GeodesicGrid:
 # Create a basic geodesic grid (icosahedron-based)
@@ -33,31 +34,10 @@ class GeodesicGrid:
             self.n_vertices = len(self.vertices)
             self.n_faces = len(self.faces)
 
-            self.neighbors: dict[int, set[int]] = self.build_neighbors()
+            self.adjacency_matrix = self.build_adjacency_matrix()
 
         except Exception as err:
             raise Exception(f"Error in the constructor of `GeodesicGrid`:\n{err}")
-
-
-
-    def add_and_return_midpoint(self, v1: int, v2: int, edge2midpoint: dict[tuple[int,int], int]) -> np.ndarray:
-        edge: tuple[int, int] = (min(v1,v2), max(v1,v2))
-        if edge not in edge2midpoint:
-            try:
-                midpoint = (np.array(self.vertices[v1]) + np.array(self.vertices[v2])) / 2.0
-                norm = np.linalg.norm(midpoint)
-                midpoint = midpoint / norm  # Normalize to keep on sphere
-                return midpoint
-            except ZeroDivisionError as err:
-                raise ZeroDivisionError(f"Midpoint between vertices {v1} and {v2} has norm 0: {err}")
-            except IndexError as err:
-                wrong_idx = edge[1]
-                if edge[0] >= len(self.vertices): wrong_idx = edge
-                raise IndexError(f"Vertex index(ices) {wrong_idx} out of bounds: {err}")
-            except Exception as err:
-                raise ValueError(f"Error calculating midpoint for vertices {v1} and {v2}: {err}")
-
-        # return edge2midpoint[edge]
 
 
     def geodesic_subdivide(self) -> tuple[np.ndarray, np.ndarray]:
@@ -105,16 +85,25 @@ class GeodesicGrid:
         return vertices, faces
 
 
+    def build_adjacency_matrix(self) -> sparse.coo_matrix:
+        """
+        Build an adjacency matrix for the geodesic grid using the inverse of the distance between vertices as weights.
+        """
 
-    def build_neighbors(self) -> dict[int, set[int]]:
-        """
-        Build an adjacency list where each vertex maps to its neighboring vertices.
-        """
-        neighbors = {i: set() for i in range(len(self.vertices))}
-        faces: list[list[int]] = self.faces.tolist()
-        for tri in faces:
-            v1, v2, v3 = tri
-            neighbors[v1].update([v2, v3])
-            neighbors[v2].update([v1, v3])
-            neighbors[v3].update([v1, v2])
-        return neighbors
+        row_indices = []
+        col_indices = []
+        data = []
+
+        for face in self.faces:
+            # Each face is a tuple of three vertex indices
+            v1, v2, v3 = face
+
+            for (a, b) in [(v1, v2), (v2, v3), (v3, v1)]:
+                dist = np.linalg.norm(self.vertices[a] - self.vertices[b])
+                weight = 1.0 / dist if dist > 0 else 0
+
+                row_indices.extend([a, b])
+                col_indices.extend([b, a])
+                data.extend([weight, weight])
+
+        return sparse.coo_matrix((data, (row_indices, col_indices)), shape=(self.n_vertices, self.n_vertices))
