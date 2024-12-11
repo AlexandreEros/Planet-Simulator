@@ -90,6 +90,13 @@ python -m view Mars atmosphere
 ```
 ![Mars-like atmosphere profiles](images/mars-like_atmosphere_profiles.png)
 
+Simulate Mercury's surface temperature changes over a period of slightly under a Mercurian year, and visualize the 
+results as an animation with one frame for every 24 hours:
+```bash
+python -m run temperature Mercury 900 8444 96
+```
+![Mercury-like planet worldwide temperature animation](images/mercury-like_temperature.gif)
+
 Simulate Mars' surface temperature changes over a period of four days, and visualize the results as an animation with 
 one frame for each hour:
 ```bash
