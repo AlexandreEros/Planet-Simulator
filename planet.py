@@ -21,7 +21,8 @@ class Planet(CelestialBody):
 
         self.sidereal_day = rotation_data['sidereal_day']
         self.axial_tilt = deg2rad(rotation_data['axial_tilt_deg'])
-        self.initial_season_rad = deg2rad(rotation_data['initial_season_deg'])
+        self.ecliptic_longitude_of_north_pole = 0.0 if 'ecliptic_longitude_of_north_pole_deg' not in rotation_data else deg2rad(rotation_data['ecliptic_longitude_of_north_pole_deg'])
+        self.initial_season_rad = self.ecliptic_longitude_of_north_pole - self.argument_of_perihelion
         initial_longitude = 0.0 if 'subsolar_point_longitude' not in rotation_data else rotation_data['subsolar_point_longitude']
         self.current_angle = np.pi + self.initial_season_rad - deg2rad(initial_longitude)
 
@@ -42,8 +43,8 @@ class Planet(CelestialBody):
             self.surface.f_GH = self.atmosphere.f_GH
 
         self.rotation_rate = 2*np.pi / self.sidereal_day
-        axial_tilt_matrix = rotation_mat_x(self.axial_tilt)
-        axial_tilt_matrix = np.dot(rotation_mat_z(self.true_anomaly + self.argument_of_perihelion - self.initial_season_rad), axial_tilt_matrix)
+        axial_tilt_matrix = rotation_mat_y(self.axial_tilt)
+        axial_tilt_matrix = np.dot(rotation_mat_z(self.ecliptic_longitude_of_north_pole), axial_tilt_matrix)
         self.axial_tilt_matrix = np.dot(self.inclination_matrix, axial_tilt_matrix)
         self.rotation_axis = np.dot(self.axial_tilt_matrix, np.array([0, 0, 1], dtype = np.float64))
         self.rotation_axis /= np.linalg.norm(self.rotation_axis)  # Just to be sure

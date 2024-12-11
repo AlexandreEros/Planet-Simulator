@@ -26,7 +26,7 @@
             "rotation_data": {
                 "sidereal_day": 5.067e6,
                 "axial_tilt_deg": 0.034,
-                "initial_season_deg": 0.0,
+                "ecliptic_longitude_of_north_pole_deg": -78.98,
                 "subsolar_point_longitude": -60.0
             },
             "color": "gray",
@@ -57,7 +57,7 @@
             "rotation_data": {
                 "sidereal_day": 8.61641004e4,
                 "axial_tilt_deg": 23.4392811,
-                "initial_season_deg": 0.0
+                "ecliptic_longitude_of_north_pole_deg": 270.0
             },
             "color": "green",
             "surface_data": {
@@ -86,7 +86,7 @@
             },
             "rotation_data": {
                 "axial_tilt_deg": 6.687,
-                "initial_season_deg": 0.0
+                "ecliptic_longitude_of_north_pole_deg": 270.0
             },
             "color": "#cccccc",
             "surface_data": {
@@ -109,14 +109,14 @@
                 "orbital_period": 5.9355072e7,
                 "eccentricity": 0.0934,
                 "argument_of_perihelion_deg": 286.5,
-                "true_anomaly_deg": 286.5,
+                "true_anomaly_deg": 0.0,
                 "inclination_deg": 1.85,
                 "lon_ascending_node_deg": 49.578
             },
             "rotation_data": {
                 "sidereal_day": 8.86427e4,
                 "axial_tilt_deg": 25.19,
-                "initial_season_deg": 90.0
+                "ecliptic_longitude_of_north_pole_deg": -1.47
             },
             "color": "#b7410e",
             "surface_data": {
