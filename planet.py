@@ -26,7 +26,7 @@ class Planet(CelestialBody):
         initial_longitude = 0.0 if 'subsolar_point_longitude' not in rotation_data else rotation_data['subsolar_point_longitude']
         self.current_angle = np.pi + self.initial_season_rad - deg2rad(initial_longitude)
 
-        self.bond_albedo = surface_data['albedo']
+        self.bond_albedo = surface_data['bond_albedo']
         semi_major_axis = self.semi_major_axis if self.body_type=='planet' else self.parent.semi_major_axis
         self.blackbody_temperature = ((1 - self.bond_albedo) * self.star.power /
                                       (16 * np.pi * constants.Stefan_Boltzmann * semi_major_axis**2)) ** (1/4)

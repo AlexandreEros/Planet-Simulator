@@ -33,17 +33,17 @@ class Surface(GeodesicGrid):
         self.irradiance = np.zeros(shape=len(self.vertices), dtype=np.float64)
         self.emissivity = 0.95
 
-        self.albedo = 0.0 if 'albedo' not in kwargs else kwargs['albedo']
-        if 'material_name' in kwargs:
-            self.load_material(kwargs['material_name'])
+        self.material = self.load_material(kwargs['material_name'])
+        self.albedo = self.material['albedo']
+        self.thermal_conductivity = self.material['thermal_conductivity']
+        self.density = self.material['density']
+        self.specific_heat_capacity = self.material['specific_heat_capacity']
 
         self.n_layers = 10 if 'n_layers' not in kwargs else kwargs['n_layers']
         self.max_depth = 4.0 if 'max_depth' not in kwargs else kwargs['max_depth']
         self.layer_depths = self.max_depth * (np.logspace(0, 1, self.n_layers, base=2) - 1)
         self.vertex_area = 4 * np.pi * self.radius ** 2 / len(self.vertices)
-        latitudes = (1-1e-1)*self.coordinates[:,0]  # Latitudes of 90º and -90º have been artificially removed
-        self.blackbody_temperature = kwargs['blackbody_temperature'] * np.cos(np.radians(latitudes)) ** (1/4)
-        self.subsurface_temperature = np.full((len(self.vertices), self.n_layers), self.blackbody_temperature[:,None], dtype=np.float64)
+        self.subsurface_temperature = np.full((len(self.vertices), self.n_layers), kwargs['blackbody_temperature'], dtype=np.float64)
 
         self.f_GH = 0.0  # Greenhouse factor; will be updated by `Planet` if the planet has an atmosphere.
 
@@ -61,23 +61,19 @@ class Surface(GeodesicGrid):
             elevations -= (np.amin(elevations) + np.amax(elevations)) / 2
             elevations *= 0.5 / np.amax(elevations)
             relative_distances = 1 + self.noise_amplitude * (np.array(elevations) + self.noise_bias/2)
-            # distances = self.radius * relative_distances
             return relative_distances
 
         except Exception as err:
             raise Exception(f"Error calculating surface elevations:\n{err}")
 
 
-    def load_material(self, material_name):
+    def load_material(self, material_name) -> dict:
         with open('materials.json', 'r') as f:
             materials = json.load(f)['materials']
             material = next((m for m in materials if m['name'] == material_name), None)
             if not material:
                 raise ValueError(f"Material '{material_name}' not found in library.")
-
-            self.thermal_conductivity = material['thermal_conductivity']
-            self.density = material['density']
-            self.specific_heat_capacity = material['specific_heat_capacity']
+            return material
 
 
     def calculate_normals(self):
@@ -119,7 +115,7 @@ class Surface(GeodesicGrid):
     def surface_heat_flux(self):
         # W/m²
         Q_absorbed = self.irradiance * (1 - self.albedo)
-        Q_emitted = self.emissivity * constants.Stefan_Boltzmann * (self.temperature / 300) ** 4 * 300**4
+        Q_emitted = self.emissivity * constants.Stefan_Boltzmann * self.temperature ** 4
         return Q_absorbed - Q_emitted * (1 - self.f_GH)
 
     def update_temperature(self, delta_t: float):

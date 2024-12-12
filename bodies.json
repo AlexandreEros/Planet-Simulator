@@ -37,7 +37,7 @@
                 "noise_octaves": 5,
                 "noise_amplitude": 4.1e-3,
                 "noise_bias": 1.0,
-                "albedo": 0.068,
+                "bond_albedo": 0.068,
                 "material_name": "Mercurian Regolith"
             },
             "atmosphere_data": {}
@@ -61,15 +61,23 @@
             },
             "color": "green",
             "surface_data": {
-                "resolution": 5,
+                "resolution": 4,
                 "radius": 6.371e6,
                 "noise_scale": 1.0,
                 "noise_octaves": 5,
-                "noise_amplitude": 0.003,
-                "noise_bias": -0.08,
-                "albedo": 0.3
+                "noise_amplitude": 0.0,
+                "noise_bias": 0.0,
+                "bond_albedo": 0.3,
+                "material_name": "Water"
             },
-            "atmosphere_data": {}
+            "atmosphere_data": {
+                "surface_pressure": 1e5,
+                "n_layers": 64,
+                "top_of_atmosphere": 4e5,
+                "greenhouse_efficiency": 9e-5,
+                "chi_CO2": 422e-6,
+                "material_name": "Earth Atmosphere"
+            }
         },
         {
             "name": "Moon",
@@ -96,7 +104,7 @@
                 "noise_octaves": 5,
                 "noise_amplitude": 4.1e-3,
                 "noise_bias": 1.0,
-                "albedo": 0.136,
+                "bond_albedo": 0.136,
                 "material_name": "Lunar Regolith"
             },
             "atmosphere_data": {}
@@ -126,14 +134,14 @@
                 "noise_octaves": 5,
                 "noise_amplitude": 0.005,
                 "noise_bias": 1.0,
-                "albedo": 0.25,
+                "bond_albedo": 0.25,
                 "material_name": "Martian Regolith"
             },
             "atmosphere_data": {
                 "surface_pressure": 610,
                 "n_layers": 64,
                 "top_of_atmosphere": 4e4,
-                "greenhouse_efficiency": 1e-5,
+                "greenhouse_efficiency": 2e-5,
                 "chi_CO2": 1.0,
                 "material_name": "Martian Atmosphere"
             }

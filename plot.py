@@ -29,25 +29,25 @@ class Plot:
         elif plot_type=='pressure':
             planet, layer_idx = args
             coordinates = planet.surface.coordinates
-            pressure = planet.atmosphere.pressure[layer_idx]
+            pressure = planet.atmosphere.air_data.pressure[layer_idx]
             args = (coordinates, pressure)
-            altitude = planet.atmosphere.altitudes[layer_idx]
+            altitude = planet.atmosphere.air_data.altitudes[layer_idx]
             kwargs['title'] = f'Air pressure (Pa) at {altitude/1000:.2f} km high'
             self.func = self.worldmap
         elif plot_type=='density':
             planet, layer_idx = args
             coordinates = planet.surface.coordinates
-            density = planet.atmosphere.density[layer_idx]
+            density = planet.atmosphere.air_data.density[layer_idx]
             args = (coordinates, density)
-            altitude = planet.atmosphere.altitudes[layer_idx]
+            altitude = planet.atmosphere.air_data.altitudes[layer_idx]
             kwargs['title'] = f'Air density (kg/m³) at {altitude/1000:.2f} km high'
             self.func = self.worldmap
         elif plot_type=='air_temperature':
             planet, layer_idx = args
             coordinates = planet.surface.coordinates
-            temperature = planet.atmosphere.temperature[layer_idx] - 273.15
+            temperature = planet.atmosphere.air_data.temperature[layer_idx] - 273.15
             args = (coordinates, temperature)
-            altitude = planet.atmosphere.altitudes[layer_idx]
+            altitude = planet.atmosphere.air_data.altitudes[layer_idx]
             kwargs['title'] = f'Temperature (ºC) at {altitude/1000:.2f} km high'
             kwargs['cmap'] = 'plasma'
             self.func = self.worldmap
@@ -299,14 +299,14 @@ class Plot:
         fig, (ax0, ax1, ax2) = plt.subplots(1, 3, sharey='row')
         fig.set_figwidth(12.0)
 
-        ax0.plot(atmosphere.temperature[:,vertex]-273.15, atmosphere.altitudes / 1000)
+        ax0.plot(atmosphere.air_data.temperature[:,vertex]-273.15, atmosphere.air_data.altitudes / 1000)
         ax0.set_ylabel("Altitude (km)")
         ax0.set_xlabel("Temperature (ºC)")
 
-        ax1.plot(atmosphere.pressure[:,vertex], atmosphere.altitudes / 1000)
+        ax1.plot(atmosphere.air_data.pressure[:,vertex], atmosphere.air_data.altitudes / 1000)
         ax1.set_xlabel("Pressure (Pa)")
 
-        ax2.plot(atmosphere.density[:,vertex], atmosphere.altitudes / 1000)
+        ax2.plot(atmosphere.air_data.density[:,vertex], atmosphere.air_data.altitudes / 1000)
         ax2.set_xlabel("Density (kg/m³)")
 
         plt.tight_layout()

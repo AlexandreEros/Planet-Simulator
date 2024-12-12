@@ -2,6 +2,7 @@
   "materials": [
     {
       "name": "Mercurian Regolith",
+      "albedo": 0.068,
       "thermal_conductivity": 0.02,
       "density": 1600,
       "specific_heat_capacity": 800,
@@ -10,13 +11,22 @@
     {
       "name": "Earth Atmosphere",
       "thermal_conductivity": 2.6e-2,
-      "molar_mass": 2.896e-2,
+      "molar_mass": 2.897e-2,
       "isobaric_mass_heat_capacity": 1004,
-      "convective_heat_transfer_coefficient": 10.0,
+      "convective_heat_transfer_coefficient": 20.0,
       "type": "gas"
     },
     {
+      "name": "Water",
+      "albedo": 0.1,
+      "thermal_conductivity": 0.598,
+      "density": 1000,
+      "specific_heat_capacity": 4184,
+      "type": "liquid"
+    },
+    {
       "name": "Lunar Regolith",
+      "albedo": 0.136,
       "thermal_conductivity": 1.53e-3,
       "density": 1500,
       "specific_heat_capacity": 1512,
@@ -24,6 +34,7 @@
     },
     {
       "name": "Martian Regolith",
+      "albedo": 0.25,
       "thermal_conductivity": 1.47e-1,
       "density": 1520,
       "specific_heat_capacity": 850,
