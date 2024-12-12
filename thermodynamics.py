@@ -6,8 +6,8 @@ from adjacency_manager import AdjacencyManager
 from surface import Surface
 
 class Thermodynamics:
-    def __init__(self, layer_manager: AirData, adjacency_manager: AdjacencyManager, surface: Surface, material: dict):
-        self.layers = layer_manager
+    def __init__(self, air_data: AirData, adjacency_manager: AdjacencyManager, surface: Surface, material: dict):
+        self.air_data = air_data
         self.adjacency = adjacency_manager
         self.surface = surface
         self.material = material
@@ -24,13 +24,13 @@ class Thermodynamics:
 
         surface_temperature = self.surface.temperature
 
-        layer_indices = self.layers.lowest_layer_above_surface
+        layer_indices = self.air_data.lowest_layer_above_surface
         vertex_indices = np.arange(self.surface.n_vertices)
 
         # Lowest atmospheric layer properties
-        atmospheric_temperature = self.layers.temperature[layer_indices, vertex_indices]
-        atmospheric_density = self.layers.density[layer_indices, vertex_indices]
-        atmospheric_layer_thickness = self.layers.altitudes[layer_indices] - self.layers.altitudes[layer_indices - 1]
+        atmospheric_temperature = self.air_data.temperature[layer_indices, vertex_indices]
+        atmospheric_density = self.air_data.density[layer_indices, vertex_indices]
+        atmospheric_layer_thickness = self.air_data.altitudes[layer_indices] - self.air_data.altitudes[layer_indices - 1]
 
         # Heat flux between surface and atmosphere
         heat_flux = k_surface_atmosphere * (surface_temperature - atmospheric_temperature)
@@ -43,12 +43,12 @@ class Thermodynamics:
 
         # Update atmospheric temperature
         is_vac = atmospheric_density < 1e-9
-        self.layers.temperature[layer_indices, vertex_indices][~is_vac] += heat_flux[~is_vac] / (
+        self.air_data.temperature[layer_indices, vertex_indices][~is_vac] += heat_flux[~is_vac] / (
             specific_heat_air * (atmospheric_density * atmospheric_layer_thickness)[~is_vac]
         ) * delta_t
 
         # Ensure temperatures remain physical (e.g., above 0 K)
-        self.layers.temperature[~np.isnan(self.layers.temperature)] = np.fmax(self.layers.temperature[~np.isnan(self.layers.temperature)], 0.0)
+        self.air_data.temperature[~np.isnan(self.air_data.temperature)] = np.fmax(self.air_data.temperature[~np.isnan(self.air_data.temperature)], 0.0)
         self.surface.subsurface_temperature[:, 0] = np.fmax(self.surface.subsurface_temperature[:, 0], 0.0)
 
 
@@ -61,10 +61,10 @@ class Thermodynamics:
         cp_air = self.material['isobaric_mass_heat_capacity']
 
         # D = diag(k/(ρcp)), where ρ varies by cell.
-        D = sparse.diags(k_air / (self.layers.density.ravel() * cp_air))
+        D = sparse.diags(k_air / (self.air_data.density.ravel() * cp_air))
 
-        T_flat = self.layers.temperature.ravel()
+        T_flat = self.air_data.temperature.ravel()
         dT = delta_t * D.dot(self.adjacency.laplacian_matrix.dot(T_flat))
         T_new = np.fmax(T_flat + dT, 0.0)
-        self.layers.temperature = T_new.reshape(self.layers.n_layers, self.surface.n_vertices)
+        self.air_data.temperature = T_new.reshape(self.air_data.n_layers, self.surface.n_vertices)
 

@@ -15,14 +15,14 @@ class Atmosphere:
         self.material = self.load_material(material_name)
 
         # Delegate layer setup to LayerManager
-        self.layer_manager = AirData(self.surface, self.planet_mass, self.material, self.atmosphere_data)
+        self.air_data = AirData(self.surface, self.planet_mass, self.material, self.atmosphere_data)
 
         # Delegate adjacency handling
-        self.adjacency_manager = AdjacencyManager(self.layer_manager, self.surface.adjacency_matrix)
+        self.adjacency_manager = AdjacencyManager(self.air_data, self.surface.adjacency_matrix)
         self.laplacian_matrix = self.adjacency_manager.laplacian_matrix
 
         # Delegate heat dynamics to Thermodynamics
-        self.thermodynamics = Thermodynamics(self.layer_manager, self.adjacency_manager, self.surface, self.material)
+        self.thermodynamics = Thermodynamics(self.air_data, self.adjacency_manager, self.surface, self.material)
 
 
     @staticmethod

@@ -40,7 +40,7 @@ class Planet(CelestialBody):
         if 'surface_pressure' in atmosphere_data and atmosphere_data['surface_pressure'] > 0.0:
             self.is_airless = False
             self.atmosphere = Atmosphere(self.surface, self.mass, atmosphere_data)
-            self.surface.f_GH = self.atmosphere.layer_manager.f_GH
+            self.surface.f_GH = self.atmosphere.air_data.f_GH
 
         self.rotation_rate = 2*np.pi / self.sidereal_day
         axial_tilt_matrix = rotation_mat_y(self.axial_tilt)

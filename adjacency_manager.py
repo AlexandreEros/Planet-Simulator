@@ -4,8 +4,8 @@ from scipy import sparse
 from air_data import AirData
 
 class AdjacencyManager:
-    def __init__(self, layer_manager: AirData, horizontal_adjacency_matrix: sparse.coo_matrix):
-        self.layer_manager = layer_manager
+    def __init__(self, air_data: AirData, horizontal_adjacency_matrix: sparse.coo_matrix):
+        self.air_data = air_data
         self.adjacency_matrix = self.build_layered_adjacency_matrix(horizontal_adjacency_matrix)
         self.laplacian_matrix = self.build_laplacian_matrix(self.adjacency_matrix)
 
@@ -25,7 +25,7 @@ class AdjacencyManager:
         N = n_layers * surface.n_vertices
         """
         # Horizontal adjacency (block diagonal matrix)
-        A_blocks = [horizontal_adjacency_matrix] * self.layer_manager.n_layers
+        A_blocks = [horizontal_adjacency_matrix] * self.air_data.n_layers
         A_block_diag = sparse.block_diag(A_blocks)
 
         # Add vertical adjacency
@@ -33,13 +33,13 @@ class AdjacencyManager:
         col_indices = []
         data = []
 
-        for layer_idx in range(self.layer_manager.n_layers - 1):
-            dz = (self.layer_manager.altitudes[layer_idx + 1] - self.layer_manager.altitudes[layer_idx])
+        for layer_idx in range(self.air_data.n_layers - 1):
+            dz = (self.air_data.altitudes[layer_idx + 1] - self.air_data.altitudes[layer_idx])
             vertical_weight = 1.0 / dz
 
-            for v_idx in range(self.layer_manager.n_vertices):
-                i = layer_idx * self.layer_manager.n_vertices + v_idx
-                j = (layer_idx + 1) * self.layer_manager.n_vertices + v_idx
+            for v_idx in range(self.air_data.n_vertices):
+                i = layer_idx * self.air_data.n_vertices + v_idx
+                j = (layer_idx + 1) * self.air_data.n_vertices + v_idx
 
                 # Add vertical adjacency (symmetric)
                 row_indices.extend([i, j])
