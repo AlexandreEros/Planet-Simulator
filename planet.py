@@ -39,8 +39,8 @@ class Planet(CelestialBody):
         self.is_airless = True
         if 'surface_pressure' in atmosphere_data and atmosphere_data['surface_pressure'] > 0.0:
             self.is_airless = False
-            self.atmosphere = Atmosphere(self.surface, self.mass, **atmosphere_data)
-            self.surface.f_GH = self.atmosphere.f_GH
+            self.atmosphere = Atmosphere(self.surface, self.mass, atmosphere_data)
+            self.surface.f_GH = self.atmosphere.layer_manager.f_GH
 
         self.rotation_rate = 2*np.pi / self.sidereal_day
         axial_tilt_matrix = rotation_mat_y(self.axial_tilt)
@@ -75,5 +75,4 @@ class Planet(CelestialBody):
     def update_temperature(self, delta_t: float):
         self.surface.update_temperature(delta_t)
         if not self.is_airless:
-            self.atmosphere.exchange_heat_with_surface(delta_t)
-            self.atmosphere.conduct_heat(delta_t)
+            self.atmosphere.update(delta_t)
