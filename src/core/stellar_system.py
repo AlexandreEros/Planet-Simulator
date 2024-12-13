@@ -1,11 +1,8 @@
 import numpy as np
-import scipy as sp
 
-from celestial_body import CelestialBody
-from star import Star
-from planet import Planet
-from satellite import Satellite
-from vector_utils import rotate_vector, deg2rad
+from .star import Star
+from .planet import Planet
+from .satellite import Satellite
 
 class StellarSystem:
     def __init__(self, planet_name: str, G: float):

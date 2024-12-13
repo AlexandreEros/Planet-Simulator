@@ -1,8 +1,5 @@
 import numpy as np
-import scipy as sp
-from vector_utils import rotate_vector
 from scipy.spatial.transform import Rotation
-
 
 class CelestialBody:
     def __init__(self, name: str, body_type: str, mass: float, color: str,
@@ -76,9 +73,25 @@ class CelestialBody:
 
 
     @staticmethod
-    def get_start_vectors(orbital_period, true_anomaly, eccentricity, argument_of_perihelion, inclination, lon_ascending_node,
-                          parent_mass, parent_position = np.zeros(3), parent_velocity = np.zeros(3), G = 6.67430e-11)\
+    def get_start_vectors(orbital_period: float, true_anomaly: float, eccentricity: float, argument_of_perihelion: float,
+                          inclination: float, lon_ascending_node: float, parent_mass: float,
+                          parent_position = np.zeros(3), parent_velocity = np.zeros(3), G = 6.67430e-11)\
             -> (np.ndarray, np.ndarray):
+        """
+        Given orbital parameters, return the celestial body's initial position and velocity
+
+        :param orbital_period: Orbital period in seconds
+        :param true_anomaly: True anomaly (angular position in the ecliptic coordinate system) in radians
+        :param eccentricity: Orbit eccentricity
+        :param argument_of_perihelion: Argument of the perihelion in radians
+        :param inclination: Orbit inclination in radians
+        :param lon_ascending_node: Longitude of the ascending node in radians
+        :param parent_mass: Mass of the object assumed to be at the focus of this orbit, in kg
+        :param parent_position: (optional) np.ndarray of shape (3) with the position of the parent object
+        :param parent_velocity: (optional) np.ndarray of shape (3) with the velocity of the parent object
+        :param G: (optional) The Newtonian gravity constant
+        :return: position, velocity
+        """
 
         mean_distance = CelestialBody.get_semi_major_axis(orbital_period, parent_mass, G)
         distance = mean_distance * (1 - eccentricity**2) / (1 + eccentricity * np.cos(true_anomaly))
@@ -95,10 +108,12 @@ class CelestialBody:
 
         position = distance * radial_vec
         velocity = radial_velocity_mag * radial_vec + transverse_velocity_mag * transverse_vec
-        position, velocity = rotate_vector(position, z_axis, argument_of_perihelion), rotate_vector(velocity, z_axis, argument_of_perihelion)
+        position = Rotation.from_rotvec(z_axis * argument_of_perihelion).apply(position)
+        velocity = Rotation.from_rotvec(z_axis * argument_of_perihelion).apply(velocity)
 
-        ascending_node_vec = np.array([np.cos(lon_ascending_node), np.sin(lon_ascending_node), 0.0])
-        position, velocity = rotate_vector(position, ascending_node_vec, inclination), rotate_vector(velocity, ascending_node_vec, inclination)
+        ascending_node_axis = np.array([np.cos(lon_ascending_node), np.sin(lon_ascending_node), 0.0])
+        position = Rotation.from_rotvec(ascending_node_axis * inclination).apply(position)
+        velocity = Rotation.from_rotvec(ascending_node_axis * inclination).apply(velocity)
 
         position += parent_position
         velocity += parent_velocity

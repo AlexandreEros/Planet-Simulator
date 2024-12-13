@@ -1,11 +1,9 @@
 import sys
-import numpy as np
-from surface import Surface
-from planet import Planet
-from simulation import Simulation
-from plot import Plot
 import json
 
+from src.plot import Plot
+from src.simulation import Simulation
+from src.core.components.surface import Surface
 
 def view():
     try:
@@ -28,29 +26,22 @@ def view():
         if len(sys.argv) > 6:
             raise TypeError(f"Surface.__init__() takes from 2 to 6 positional arguments but {len(sys.argv)} were given.")
 
-        with open('bodies.json', 'r') as f:
-            data = json.load(f)
-            bodies: list[dict] = data['bodies']
-            planet_data = [body for body in bodies if body['name']==planet_name][0]
-            surface_data = planet_data['surface_data']
-            surface_data['blackbody_temperature'] = 123 # Who cares
-
     except ValueError as e:
         print(f"Invalid input: {e}")
         sys.exit(1)  # Exit with an error code
 
     # Create
-    try:
-        if plot_type in ('mesh', 'elevation'):
-            args=(Surface(**surface_data),)
-        elif plot_type in ('atmosphere', 'pressure', 'density', 'air_temperature'):
-            sim = Simulation(plot_type, planet_name, timestep, n_steps)
-            args = (sim.planet, idx)
-
-    except Exception as e:
-        print(f"Error while generating surface:\n{e}")
-        sys.exit(1)  # Exit with an error code
-
+    if plot_type in ('mesh', 'elevation'):
+        with open(Simulation.default_bodies, 'r') as f:
+            data = json.load(f)
+            bodies: list[dict] = data['bodies']
+            planet_data = [body for body in bodies if body['name']==planet_name][0]
+            surface_data = planet_data['surface_data']
+            surface_data['blackbody_temperature'] = 123 # Who cares
+        args=(Surface(**surface_data),)
+    elif plot_type in ('atmosphere', 'pressure', 'density', 'air_temperature'):
+        sim = Simulation(plot_type, planet_name, timestep, n_steps)
+        args = (sim.planet, idx)
 
     Plot(plot_type, *args)
 

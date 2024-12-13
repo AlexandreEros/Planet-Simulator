@@ -5,11 +5,10 @@ import numpy as np
 from scipy.interpolate import griddata
 from datetime import datetime
 
-from celestial_body import CelestialBody
-from planet import Planet
-from geodesic_grid import GeodesicGrid
-from simulation import Simulation
-from atmosphere import Atmosphere
+from .simulation import Simulation
+from .core.celestial_body import CelestialBody
+from .core.math_utils.geodesic_grid import GeodesicGrid
+from .core.components.atmosphere import Atmosphere
 
 
 class Plot:

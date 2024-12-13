@@ -1,5 +1,4 @@
-import numpy as np
-from celestial_body import CelestialBody
+from .celestial_body import CelestialBody
 
 class Star(CelestialBody):
     def __init__(self, name: str, body_type: str, mass: float,

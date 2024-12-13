@@ -1,10 +1,16 @@
 import numpy as np
-import json
 from scipy import constants
-from stellar_system import StellarSystem
+import json
+import os
+
+from .core.stellar_system import StellarSystem
 
 class Simulation:
-    def __init__(self, plot_type: str, planet_name: str, timestep: float, n_steps: int, steps_between_snapshots: int = 1, body_file = 'bodies.json'):
+    base_dir = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+    default_bodies = os.path.join(base_dir, 'data', 'bodies.json')
+
+    def __init__(self, plot_type: str, planet_name: str, timestep: float, n_steps: int, steps_between_snapshots: int = 1,
+                 body_file = default_bodies):
         self.delta_t = timestep
         self.n_steps = n_steps
         self.steps_between_snapshots = steps_between_snapshots
