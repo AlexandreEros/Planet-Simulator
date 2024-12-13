@@ -1,29 +1,33 @@
 import numpy as np
+import json
 
 from .star import Star
 from .planet import Planet
 from .satellite import Satellite
 
 class StellarSystem:
-    def __init__(self, planet_name: str, G: float):
-        self.G = G
+    def __init__(self, planet_name: str, body_file: str, G: float):
         self.planet_name = planet_name
+        self.body_file = body_file
+        self.G = G
+
         self.planet = None
         self.bodies: list[Star | Planet] = []
+        self.load_bodies_from_file()  # Initializes both of the empty attributes above
 
-
-    @property
-    def positions(self) -> dict[str, list[float]]:
-        return {body.name: body.position.tolist() for body in self.bodies}
-
-    @property
-    def velocities(self) -> dict[str, list[float]]:
-        return {body.name: body.velocity.tolist() for body in self.bodies}
+    def load_bodies_from_file(self):
+        """Load celestial bodies from a JSON file and add them to the system."""
+        with open(self.body_file, 'r') as f:
+            data = json.load(f)
+            for body_data in data['bodies']:
+                if body_data['name'] != self.planet_name and 'surface_data' in body_data:
+                    body_data['surface_data']['resolution'] = 0
+                    body_data['atmosphere_data'] = {}
+                self.add_body(**body_data)
 
     @property
     def idx(self) -> dict[str, int]:
         return {self.bodies[i].name: i for i in range(len(self.bodies))}
-
 
     def add_body(self, **kwargs) -> None:
         for kw in kwargs:
@@ -47,6 +51,14 @@ class StellarSystem:
         if kwargs['name']==self.planet_name:
             self.planet = self.bodies[-1]
 
+
+    @property
+    def positions(self) -> dict[str, list[float]]:
+        return {body.name: body.position.tolist() for body in self.bodies}
+
+    @property
+    def velocities(self) -> dict[str, list[float]]:
+        return {body.name: body.velocity.tolist() for body in self.bodies}
 
     @property
     def current_total_angular_momentum(self) -> np.ndarray:
