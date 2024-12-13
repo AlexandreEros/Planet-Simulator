@@ -6,9 +6,9 @@ from scipy.interpolate import griddata
 from datetime import datetime
 
 from .simulation import Simulation
-from .core.celestial_body import CelestialBody
-from .core.math_utils.geodesic_grid import GeodesicGrid
-from .core.components.atmosphere import Atmosphere
+from .models.celestial_body import CelestialBody
+from .models.math_utils.geodesic_grid import GeodesicGrid
+from .models.planetary.atmosphere import Atmosphere
 
 
 class Plot:

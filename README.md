@@ -13,33 +13,44 @@ orbital data, and surface characteristics.
 - **Real-Time Physics:** Includes gravitational interactions and heat conduction dynamics for realistic simulations.
 
 ## File Structure
-### Core Modules
-- `surface.py`: Defines the surface features of celestial bodies using geodesic grids.
-- `planet.py`: Implements planet-specific properties and behaviors.
-- `atmosphere.py`: Models atmospheric layers, pressure, temperature, and heat exchange.
-- `simulation.py`: Coordinates the entire simulation, managing time steps and updates.
-- `stellar_system.py`: Manages the celestial system, including gravitational interactions.
-- `star.py`: Describes stars and their attributes.
-- `satellite.py`: Handles satellite dynamics.
-- `vector_utils.py`: Provides utility functions for vector manipulations.
 
-### Visualization
-- `plot.py`: Handles data visualization for various simulation outputs (e.g., temperature maps, orbit plots).
+### Executables
+- `run.py`: Entry point for running simulations and generating visualizations.
 - `view.py`: Offers a command-line interface for generating and viewing plots.
 
-### Configuration and Data
+### `src/`: Python Code
+- `simulation.py`: Coordinates the entire simulation, managing time steps and updates.
+- `plot.py`: Visualization and plotting, called from `run.py` and `view.py` 
+<br><br>
+- **`models/`: Modeling of physical objects and phenomena**
+  - `stellar_system.py`: Manages celestial systems, gravitational forces, and orbital dynamics.
+  - `celestial_body.py`: Base class for stars, planets, and satellites.
+  - `planet.py`: Handles planet-specific logic.
+  - `satellite.py`: Extends the `Planet` class for satellite-specific behaviors.
+  - `star.py`: Describes stars and their properties.
+  <br><br>
+  - **`planetary/`: Aspects of an individual celestial body**
+    - `surface.py`: Handles surface features and properties.
+    - `atmosphere.py`: Models atmospheric layers and dynamics.
+    - `thermodynamics.py`: Manages heat transfer and energy exchange.
+    - `materials.py`: Loads and manages material properties from `materials.json`.
+    - `adjacency_manager.py`: Builds adjacency matrices and Laplacians for spatial operations.
+    - `air_data.py`: Arrays containing data on each point of the atmosphere at the current instant.
+  <br><br>
+  - **`math_utils/`: Mathematical utilities**
+    - `geodesic_grid.py`: Creates geodesic grids for planetary surfaces and atmospheric layers.
+    - `vector_utils.py`: Provides vector manipulation and transformation utilities.
+
+### `data/`: Configuration and Input
 - `bodies.json`: Contains definitions for celestial bodies (e.g., Earth, Mars, Sun).
 - `materials.json`: Stores material properties (e.g., thermal conductivity, density).
 
-### Execution
-- `run.py`: Entry point for running simulations and generating visualizations.
-
 ## Requirements
-### Python Libraries
-- **Matplotlib**: For visualizations.
-- **Noise**: Procedural generation of terrain using Perlin noise.
-- **Numpy**: Numerical computations.
-- **Scipy**: Scientific computations and optimizations.
+This project requires Python 3.12 or higher and the following Python libraries:
+- **Matplotlib** (3.9.2): For visualizations.
+- **Noise** (1.2.2): Procedural generation of terrain using Perlin noise.
+- **Numpy** (2.1.2): Numerical computations.
+- **Scipy** (1.14.1): Scientific computations and optimizations.
 
 Install all dependencies using:
 ```bash

@@ -4,8 +4,8 @@ from scipy import constants
 from .math_utils.vector_utils import deg2rad, rotate_vector, normalize, rotation_mat_x, rotation_mat_y, rotation_mat_z
 from .celestial_body import CelestialBody
 from .star import Star
-from .components.surface import Surface
-from .components.atmosphere import Atmosphere
+from .planetary.surface import Surface
+from .planetary.atmosphere import Atmosphere
 
 class Planet(CelestialBody):
     def __init__(self, name: str, body_type: str, mass: float, color: str,

@@ -1,9 +1,8 @@
 import numpy as np
 from scipy import constants
-import json
 import os
 
-from .core.stellar_system import StellarSystem
+from .models.stellar_system import StellarSystem
 
 class Simulation:
     base_dir = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
