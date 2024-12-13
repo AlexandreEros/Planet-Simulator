@@ -1,8 +1,7 @@
 import sys
 
-from simulation import Simulation
-# import plot
-from plot import Plot
+from src.simulation import Simulation
+from src.plot import Plot
 
 def run():
     plot_type = 'orbits'
@@ -24,15 +23,9 @@ def run():
         raise TypeError(f"run() takes from 0 to 6 positional arguments but {len(sys.argv)} were given.")
 
     sim = Simulation(plot_type, planet, timestep, n_steps, steps_between_snapshots)
-
     sim.run()
 
-    # try:
     Plot(plot_type, sim, planet)
-    # except Exception as err:
-    #     print(f"Error plotting:\n{err}")
-    #     sys.exit(1)
-
 
 run()
 sys.exit(0)

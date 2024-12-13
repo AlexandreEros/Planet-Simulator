@@ -1,10 +1,10 @@
-import json
 import noise
 import numpy as np
 from scipy import constants
 
-from geodesic_grid import GeodesicGrid
-from vector_utils import cartesian_to_spherical, normalize
+from .materials import Materials
+from ..math_utils.geodesic_grid import GeodesicGrid
+from ..math_utils.vector_utils import cartesian_to_spherical, normalize
 
 class Surface(GeodesicGrid):
     def __init__(self, **kwargs):
@@ -33,7 +33,7 @@ class Surface(GeodesicGrid):
         self.irradiance = np.zeros(shape=len(self.vertices), dtype=np.float64)
         self.emissivity = 0.95
 
-        self.material = self.load_material(kwargs['material_name'])
+        self.material = Materials.load(kwargs['material_name'])
         self.albedo = self.material['albedo']
         self.thermal_conductivity = self.material['thermal_conductivity']
         self.density = self.material['density']
@@ -65,15 +65,6 @@ class Surface(GeodesicGrid):
 
         except Exception as err:
             raise Exception(f"Error calculating surface elevations:\n{err}")
-
-
-    def load_material(self, material_name) -> dict:
-        with open('materials.json', 'r') as f:
-            materials = json.load(f)['materials']
-            material = next((m for m in materials if m['name'] == material_name), None)
-            if not material:
-                raise ValueError(f"Material '{material_name}' not found in library.")
-            return material
 
 
     def calculate_normals(self):

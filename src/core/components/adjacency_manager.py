@@ -1,7 +1,7 @@
 import numpy as np
 from scipy import sparse
 
-from air_data import AirData
+from .air_data import AirData
 
 class AdjacencyManager:
     def __init__(self, air_data: AirData, horizontal_adjacency_matrix: sparse.coo_matrix):

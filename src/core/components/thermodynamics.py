@@ -1,9 +1,9 @@
 import numpy as np
 from scipy import sparse
 
-from air_data import AirData
-from adjacency_manager import AdjacencyManager
-from surface import Surface
+from .air_data import AirData
+from .adjacency_manager import AdjacencyManager
+from .surface import Surface
 
 class Thermodynamics:
     def __init__(self, air_data: AirData, adjacency_manager: AdjacencyManager, surface: Surface, material: dict):

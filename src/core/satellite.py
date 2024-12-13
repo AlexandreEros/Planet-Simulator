@@ -1,9 +1,7 @@
 import numpy as np
-from scipy import constants
 
-from celestial_body import CelestialBody
-from star import Star
-from planet import Planet
+from .celestial_body import CelestialBody
+from .planet import Planet
 
 class Satellite(Planet):
     def __init__(self, name: str, body_type: str, mass: float, color: str,

@@ -56,10 +56,16 @@ normalize = lambda vec: vec / np.linalg.norm(vec, axis=-1)[..., None]
 
 def cartesian_to_spherical(vertex: np.ndarray):
     x, y, z = tuple(vertex.tolist())
-    # Longitude (in degrees)
     longitude = np.degrees(np.arctan2(y, x))
-    # Latitude (in degrees)
     latitude = np.degrees(np.arcsin(z / np.linalg.norm(vertex)))
     return latitude, longitude
+
+
+def subsolar_point(sunlight_vector: np.ndarray) -> tuple[float, float]:
+    sunlight_vector /= np.linalg.norm(sunlight_vector)
+    x, y, z = tuple(sunlight_vector.tolist())
+    latitude = np.rad2deg(np.arcsin(z))
+    longitude = np.rad2deg(np.arctan2(y, x))
+    return float(latitude), float(longitude)
 
 

@@ -1,6 +1,7 @@
 import numpy as np
-from vector_utils import normalize
 from scipy import sparse
+
+from .vector_utils import normalize
 
 class GeodesicGrid:
 # Create a basic geodesic grid (icosahedron-based)
