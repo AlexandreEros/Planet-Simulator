@@ -19,7 +19,7 @@
                 "orbital_period": 7.6e6,
                 "eccentricity": 0.2056,
                 "argument_of_perihelion_deg": 29.124,
-                "true_anomaly_deg": 0.0,
+                "true_anomaly_deg": 180.0,
                 "inclination_deg": 7.005,
                 "lon_ascending_node_deg": 48.331
             },
@@ -141,7 +141,7 @@
                 "surface_pressure": 610,
                 "n_layers": 64,
                 "top_of_atmosphere": 4e4,
-                "greenhouse_efficiency": 1e-5,
+                "greenhouse_efficiency": 5e-5,
                 "chi_CO2": 1.0,
                 "material_name": "Martian Atmosphere"
             }

@@ -284,10 +284,10 @@ class Plot:
         # Create the animation
         ani = animation.FuncAnimation(fig, update, frames=len(variable_history), blit=True)
 
-        # # Save animation as a GIF or mp4
-        # nowstr = datetime.today().strftime('%Y-%m-%d_%H-%M-%S')
-        # simplified_title = "".join(c for c in title if c.isalnum())
-        # ani.save(f"temp/{simplified_title}_history_{nowstr}.gif", writer='pillow', fps=4)
+        # Save animation as a GIF or mp4
+        nowstr = datetime.today().strftime('%Y-%m-%d_%H-%M-%S')
+        simplified_title = "".join(c for c in title if c.isalnum())
+        ani.save(f"temp/{simplified_title}_history_{nowstr}.gif", writer='pillow', fps=4)
 
         # Show the animation in the notebook or console
         plt.show()

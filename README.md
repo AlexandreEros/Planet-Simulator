@@ -65,10 +65,12 @@ python run.py [plot_type] [planet] [timestep] [n_steps] [steps_between_snapshots
 ```
 
 - `plot_type`: Type of visualization (`orbits`, `temperature`, `irradiance`, etc.).
-- `planet`: Name of the planet from `bodies.json`.
-- `timestep`: Time step in seconds.
-- `n_steps`: Total number of simulation steps.
-- `steps_between_snapshots`: Steps between saving data snapshots.
+- `planet`: Name of the planet, from `bodies_file`.
+- `duration_sec`: Total duration of the simulation, in seconds.
+- `timestep_sec`: Time step duration, in seconds.
+- `time_between_snapshots_sec` (optional): Time between snapshots (samples of the simulation that will appear in the 
+final report). By default, equal to the time step.
+- `bodies_file` (optional): File where celestial bodies are defined. By default, `data/bodies.json`.
 
 ### Visualization
 Generate and view plots with:
@@ -82,10 +84,10 @@ python view.py [planet_name] [plot_type] [index] [timestep] [n_steps]
 atmosphere in `pressure`, `density` or `air_temperature` plots.
 
 ## Examples
-Simulate the orbits of all celestial bodies added so far over a period of slightly under one Martian year, and mark the 
-bodies' positions every 160 (36000 * 16 / 3600) hours:
+Simulate the orbits of the celestial bodies added so far over a period of slightly under one Martian year, with a time
+step of 10 hours, and mark the bodies' positions 100 times:
 ```bash
-python -m run orbits Sun 36000 1600 16 
+python -m run orbits Sun 5.76e7 36000 5.76e5
 ```
 ![Orbits](images/orbits.png)
 
@@ -101,17 +103,17 @@ python -m view Mars atmosphere
 ```
 ![Mars-like atmosphere profiles](images/mars-like_atmosphere_profiles.png)
 
-Simulate Mercury's surface temperature changes over a period of slightly under a Mercurian year, and visualize the 
-results as an animation with one frame for every 24 hours:
+Simulate Mercury's surface temperature changes over a period of slightly under a Mercurian year, with a time step of ten
+minutes, and visualize the results as an animation with one frame for every 24 hours:
 ```bash
-python -m run temperature Mercury 900 8444 96
+python -m run temperature Mercury 7.5e6 600 86400
 ```
 ![Mercury-like planet worldwide temperature animation](images/mercury-like_temperature.gif)
 
-Simulate Mars' surface temperature changes over a period of four days, and visualize the results as an animation with 
-one frame for each hour:
+Simulate Mars' surface temperature changes over a period of three days, with a time step of one minute, and visualize 
+the results as an animation with one frame for each hour:
 ```bash
-python run.py temperature Mars 600 1122 6
+python -m run temperature Mars 26.59e4 60 3600
 ```
 ![Mars-like planet worldwide temperature animation](images/mars-like_temperature.gif)
 

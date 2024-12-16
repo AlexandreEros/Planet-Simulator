@@ -1,22 +1,18 @@
 import numpy as np
 from scipy import constants
-import os
 
 from .models.stellar_system import StellarSystem
 
 class Simulation:
-    base_dir = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
-    default_bodies = os.path.join(base_dir, 'data', 'bodies.json')
-
-    def __init__(self, plot_type: str, planet_name: str, timestep: float, n_steps: int, steps_between_snapshots: int = 1,
-                 body_file = default_bodies):
-        self.delta_t = timestep
-        self.n_steps = n_steps
-        self.steps_between_snapshots = steps_between_snapshots
-        self.n_snapshots = int(np.ceil(self.n_steps / self.steps_between_snapshots))
-
+    def __init__(self, plot_type: str, planet_name: str, duration_sec: int, timestep_sec: float, time_between_snapshots_sec: float,
+                 body_file: str):
         self.plot_type = plot_type
         self.planet_name = planet_name
+        self.delta_t = timestep_sec
+        self.duration = duration_sec
+        self.time_between_snapshots = time_between_snapshots_sec
+
+        self.n_snapshots = int(np.ceil(self.duration / self.time_between_snapshots))
 
         self.G = constants.G
 
@@ -42,10 +38,11 @@ class Simulation:
 
 
     def run(self):
-        for i_step in range(self.n_steps):
-            if i_step % self.steps_between_snapshots == 0:
-                i_snapshot = i_step // self.steps_between_snapshots
-
+        time_since_snapshot = 0
+        i_snapshot = 0
+        while i_snapshot < self.n_snapshots:
+            if time_since_snapshot >= self.time_between_snapshots:
+                time_since_snapshot = 0
                 for body in self.stellar_system.bodies:
                     if self.plot_type=='orbits':
                         self.position_history[body.name][i_snapshot] = body.position
@@ -59,5 +56,9 @@ class Simulation:
                 if self.plot_type=='heat':
                     self.heat_history[i_snapshot] = self.planet.surface.surface_heat_flux()
 
-            self.time += self.delta_t
+                i_snapshot += 1
+
             self.stellar_system.update(self.delta_t)
+
+            self.time += self.delta_t
+            time_since_snapshot += self.delta_t

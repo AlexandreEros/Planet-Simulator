@@ -3,7 +3,7 @@
     {
       "name": "Mercurian Regolith",
       "albedo": 0.068,
-      "thermal_conductivity": 0.02,
+      "thermal_conductivity": 2e-3,
       "density": 1600,
       "specific_heat_capacity": 800,
       "type": "solid"
