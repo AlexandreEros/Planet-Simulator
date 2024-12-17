@@ -1,5 +1,4 @@
 import matplotlib.pyplot as plt
-import matplotlib.colors as mcolors
 import matplotlib.animation as animation
 import numpy as np
 from scipy.interpolate import griddata
@@ -7,8 +6,8 @@ from datetime import datetime
 
 from .simulation import Simulation
 from .models.celestial_body import CelestialBody
-from .models.math_utils.geodesic_grid import GeodesicGrid
 from .models.planetary.atmosphere import Atmosphere
+from src.math_utils.geodesic_grid import GeodesicGrid
 
 
 class Plot:

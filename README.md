@@ -36,10 +36,10 @@ orbital data, and surface characteristics.
     - `materials.py`: Loads and manages material properties from `materials.json`.
     - `adjacency_manager.py`: Builds adjacency matrices and Laplacians for spatial operations.
     - `air_data.py`: Arrays containing data on each point of the atmosphere at the current instant.
-  <br><br>
-  - **`math_utils/`: Mathematical utilities**
-    - `geodesic_grid.py`: Creates geodesic grids for planetary surfaces and atmospheric layers.
-    - `vector_utils.py`: Provides vector manipulation and transformation utilities.
+<br><br>
+- **`math_utils/`: Mathematical utilities**
+  - `geodesic_grid.py`: Creates geodesic grids for planetary surfaces and atmospheric layers.
+  - `vector_utils.py`: Provides vector manipulation and transformation utilities.
 
 ### `data/`: Configuration and Input
 - `bodies.json`: Contains definitions for celestial bodies (e.g., Earth, Mars, Sun).
@@ -61,7 +61,7 @@ pip install -r requirements.txt
 ### Simulation
 Run a simulation with:
 ```bash
-python run.py [plot_type] [planet] [timestep] [n_steps] [steps_between_snapshots]
+python run.py [plot_type] [planet] [duration_sec] [timestep_sec] [time_between_snapshots_sec] [bodies_file]
 ```
 
 - `plot_type`: Type of visualization (`orbits`, `temperature`, `irradiance`, etc.).
@@ -75,13 +75,15 @@ final report). By default, equal to the time step.
 ### Visualization
 Generate and view plots with:
 ```bash
-python view.py [planet_name] [plot_type] [index] [timestep] [n_steps]
+python view.py [planet_name] [plot_type] [index] [duration] [timestep]
 ```
 
 - `planet_name`: Name of the celestial body (e.g., Earth, Mars).
 - `plot_type`: Type of plot (`elevation`, `atmosphere`, etc.).
-- `idx`: Index of the surface vertex (air column) being described in `atmosphere` plots, or of the layer of the 
+- `index`: Index of the surface vertex (air column) being described in `atmosphere` plots, or of the layer of the 
 atmosphere in `pressure`, `density` or `air_temperature` plots.
+- `duration`: Duration in seconds, for plots that require running simulations.
+- `timestep`: Time step, for plots that require running simulations.
 
 ## Examples
 Simulate the orbits of the celestial bodies added so far over a period of slightly under one Martian year, with a time

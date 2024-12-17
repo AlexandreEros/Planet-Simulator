@@ -72,9 +72,8 @@
             },
             "atmosphere_data": {
                 "surface_pressure": 1e5,
-                "n_layers": 64,
-                "top_of_atmosphere": 4e5,
-                "greenhouse_efficiency": 9e-5,
+                "n_layers": 8,
+                "greenhouse_efficiency": 2e-4,
                 "chi_CO2": 422e-6,
                 "material_name": "Earth Atmosphere"
             }
@@ -139,9 +138,8 @@
             },
             "atmosphere_data": {
                 "surface_pressure": 610,
-                "n_layers": 64,
-                "top_of_atmosphere": 4e4,
-                "greenhouse_efficiency": 5e-5,
+                "n_layers": 8,
+                "greenhouse_efficiency": 8.4e-5,
                 "chi_CO2": 1.0,
                 "material_name": "Martian Atmosphere"
             }

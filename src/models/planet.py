@@ -1,7 +1,7 @@
 import numpy as np
 from scipy import constants
 
-from .math_utils.vector_utils import deg2rad, rotate_vector, normalize, rotation_mat_x, rotation_mat_y, rotation_mat_z
+from src.math_utils.vector_utils import deg2rad, rotate_vector, normalize, rotation_mat_y, rotation_mat_z
 from .celestial_body import CelestialBody
 from .star import Star
 from .planetary.surface import Surface
