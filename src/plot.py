@@ -1,3 +1,5 @@
+import matplotlib
+# matplotlib.use('Agg')
 import matplotlib.pyplot as plt
 import matplotlib.animation as animation
 import numpy as np
@@ -48,6 +50,14 @@ class Plot:
             altitude = planet.atmosphere.air_data.altitudes[layer_idx]
             kwargs['title'] = f'Temperature (ºC) at {altitude/1000:.2f} km high'
             kwargs['cmap'] = 'plasma'
+            self.func = self.worldmap
+        elif plot_type=='pressure_gradient':
+            planet, layer_idx = args
+            coordinates = planet.surface.coordinates
+            pressure_gradient = planet.atmosphere.air_data.pressure_gradient
+            args = (coordinates, pressure_gradient)
+            altitude = planet.atmosphere.air_data.altitudes[layer_idx]
+            kwargs['title'] = f'Pressure Gradient at {altitude/1000:.2f} km high'
             self.func = self.worldmap
 
         elif plot_type=='elevation':
@@ -222,7 +232,7 @@ class Plot:
             method='cubic'  # 'cubic', 'linear', or 'nearest'
         )
 
-        plt.figure(figsize=(12, 6))
+        fig = plt.figure(figsize=(12, 6))
         plt.imshow(grid_values, extent=(-180, 180, -90, 90), origin='lower', **kwargs)
         plt.colorbar(label=title)
         plt.xlabel('Longitude')
@@ -231,9 +241,9 @@ class Plot:
         plt.tight_layout()
         plt.show()
 
-        # nowstr = datetime.today().strftime('%Y-%m-%d_%H-%M-%S')
-        # simplified_title = "".join(c for c in title if c.isalnum())
-        # plt.savefig(f"temp/{simplified_title}_map_{nowstr}.png")
+        nowstr = datetime.today().strftime('%Y-%m-%d_%H-%M-%S')
+        simplified_title = "".join(c for c in title if c.isalnum())
+        fig.savefig(f"temp/{simplified_title}_map_{nowstr}.png")
 
 
 

@@ -30,8 +30,8 @@ def run():
     if len(sys.argv) > 7:
         raise TypeError(f"run() takes from 0 to 7 positional arguments but {len(sys.argv)} were given.")
 
-    sim = Simulation(plot_type, planet, duration_sec, timestep_sec, time_between_snapshots_sec, bodies_file)
-    sim.run()
+    sim = Simulation(plot_type, planet, bodies_file)
+    sim.run(duration_sec, timestep_sec, time_between_snapshots_sec)
 
     Plot(plot_type, sim, planet)
 
