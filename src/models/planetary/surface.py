@@ -23,9 +23,7 @@ class Surface(GeodesicGrid):
         self.vertices *= self.relative_distance[:,None]
         self.elevation = (self.relative_distance - 1.0) * self.radius
 
-        self.coordinates = np.empty_like(self.vertices)
-        self.coordinates[:,:2] = np.apply_along_axis(cartesian_to_spherical, -1, self.vertices)
-        self.coordinates[:,2] = self.elevation
+        self.coordinates = np.apply_along_axis(cartesian_to_spherical, -1, self.vertices)
 
         self.normals = self.calculate_normals()
 
@@ -43,7 +41,8 @@ class Surface(GeodesicGrid):
         self.max_depth = 4.0 if 'max_depth' not in kwargs else kwargs['max_depth']
         self.layer_depths = self.max_depth * (np.logspace(0, 1, self.n_layers, base=2) - 1)
         self.vertex_area = 4 * np.pi * self.radius ** 2 / len(self.vertices)
-        self.subsurface_temperature = np.full((len(self.vertices), self.n_layers), kwargs['blackbody_temperature'], dtype=np.float64)
+        self.blackbody_temperature = kwargs['blackbody_temperature']
+        self.subsurface_temperature = np.full((len(self.vertices), self.n_layers), self.blackbody_temperature, dtype=np.float64)
 
         self.f_GH = 0.0  # Greenhouse factor; will be updated by `Planet` if the planet has an atmosphere.
 

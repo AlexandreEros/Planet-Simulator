@@ -23,3 +23,9 @@ class Atmosphere:
     def update(self, delta_t):
         self.thermodynamics.exchange_heat_with_surface(delta_t)
         self.thermodynamics.conduct_heat(delta_t)
+        self.air_data.update()
+        #pressure_gradient = self.thermodynamics.calculate_pressure_gradient()
+        #self.air_data.pressure_gradient = self.thermodynamics.cartesian_gradient_to_spherical(pressure_gradient)
+        for layer_idx in range(self.air_data.n_layers):
+            self.air_data.pressure_gradient[layer_idx,:,0] = self.surface.grad_lambda.dot(self.air_data.pressure[layer_idx])
+            self.air_data.pressure_gradient[layer_idx,:,1] = self.surface.grad_phi.dot(self.air_data.pressure[layer_idx])

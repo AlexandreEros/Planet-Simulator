@@ -6,6 +6,13 @@ from .air_data import AirData
 class AdjacencyManager:
     def __init__(self, air_data: AirData, horizontal_adjacency_matrix: sparse.coo_matrix):
         self.air_data = air_data
+        self.horizontal_adjacency_matrix = horizontal_adjacency_matrix
+
+        self.n_layers = self.air_data.n_layers
+        self.n_vertices = self.air_data.n_vertices
+        self.is_underground = self.air_data.is_underground
+        self.lowest_layer_above_surface = self.air_data.lowest_layer_above_surface
+
         self.adjacency_matrix = self.build_layered_adjacency_matrix(horizontal_adjacency_matrix)
         self.laplacian_matrix = self.build_laplacian_matrix(self.adjacency_matrix)
 
@@ -25,7 +32,7 @@ class AdjacencyManager:
         N = n_layers * surface.n_vertices
         """
         # Horizontal adjacency (block diagonal matrix)
-        A_blocks = [horizontal_adjacency_matrix] * self.air_data.n_layers
+        A_blocks = [horizontal_adjacency_matrix] * self.n_layers
         A_block_diag = sparse.block_diag(A_blocks)
 
         # Add vertical adjacency
@@ -33,13 +40,13 @@ class AdjacencyManager:
         col_indices = []
         data = []
 
-        for layer_idx in range(self.air_data.n_layers - 1):
-            dz = (self.air_data.altitudes[layer_idx + 1] - self.air_data.altitudes[layer_idx])
-            vertical_weight = 1.0 / dz
-
-            for v_idx in range(self.air_data.n_vertices):
-                i = layer_idx * self.air_data.n_vertices + v_idx
-                j = (layer_idx + 1) * self.air_data.n_vertices + v_idx
+        for v_idx in range(self.n_vertices):
+            bottom_layer = self.lowest_layer_above_surface[v_idx]
+            for layer_idx in range(bottom_layer, self.n_layers - 1):
+                dz = (self.air_data.altitudes[layer_idx + 1] - self.air_data.altitudes[layer_idx])
+                vertical_weight = 1.0 / dz
+                i = layer_idx * self.n_vertices + v_idx
+                j = (layer_idx + 1) * self.n_vertices + v_idx
 
                 # Add vertical adjacency (symmetric)
                 row_indices.extend([i, j])
@@ -50,11 +57,17 @@ class AdjacencyManager:
 
         # Combine horizontal and vertical adjacency
         A = A_block_diag + V
+
+        # Exclude edges connected to underground vertices
+        underground_idx = np.where(self.is_underground)[0]
+        mask = np.isin(V.row, underground_idx) | np.isin(V.col, underground_idx)
+        data = np.array(data)
+        A = sparse.csr_matrix((data[~mask], (V.row[~mask], V.col[~mask])), shape=A.shape)
         return A
 
 
     @staticmethod
-    def build_laplacian_matrix(A: sparse.coo_matrix):
+    def build_laplacian_matrix(A: sparse.csr_matrix):
         """
         Given the layered adjacency matrix (which represents vertical adjacency as well), build the corresponding
         Laplacian matrix.

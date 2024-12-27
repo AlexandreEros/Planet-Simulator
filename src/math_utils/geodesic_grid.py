@@ -1,7 +1,7 @@
 import numpy as np
 from scipy import sparse
 
-from .vector_utils import normalize
+from .vector_utils import normalize, cartesian_to_spherical, build_gradient_operators
 
 class GeodesicGrid:
 # Create a basic geodesic grid (icosahedron-based)
@@ -35,7 +35,14 @@ class GeodesicGrid:
             self.n_vertices = len(self.vertices)
             self.n_faces = len(self.faces)
 
+            coordinates = np.apply_along_axis(cartesian_to_spherical, -1, self.vertices)
+            self.latitude = coordinates[:, 0]
+            self.longitude = coordinates[:, 1]
+
             self.adjacency_matrix = self.build_adjacency_matrix()
+            self.dx, self.dy, self.dz = self.build_dxdydz_matrices()
+
+            self.grad_phi, self.grad_lambda = build_gradient_operators(self.latitude, self.longitude, self.adjacency_matrix.tocsr(), self.radius)
 
         except Exception as err:
             raise Exception(f"Error in the constructor of `GeodesicGrid`:\n{err}")
@@ -108,3 +115,35 @@ class GeodesicGrid:
                 data.extend([weight, weight])
 
         return sparse.coo_matrix((data, (row_indices, col_indices)), shape=(self.n_vertices, self.n_vertices))
+
+
+    def build_dxdydz_matrices(self) -> tuple[sparse.coo_matrix, sparse.coo_matrix, sparse.coo_matrix]:
+        """
+        Build an adjacency matrix for the geodesic grid using the inverse of the distance between vertices as weights.
+        """
+
+        row_indices = []
+        col_indices = []
+        datax = []
+        datay = []
+        dataz = []
+
+        for face in self.faces:
+            # Each face is a tuple of three vertex indices
+            v1, v2, v3 = face
+
+            for (a, b) in [(v1, v2), (v2, v3), (v3, v1)]:
+                dx = self.vertices[b, 0] - self.vertices[a, 0]
+                dy = self.vertices[b, 1] - self.vertices[a, 1]
+                dz = self.vertices[b, 2] - self.vertices[a, 2]
+
+                row_indices.extend([a, b])
+                col_indices.extend([b, a])
+                datax.extend([dx, -dx])
+                datay.extend([dy, -dy])
+                dataz.extend([dz, -dz])
+
+        dx_mat = sparse.coo_matrix((datax, (row_indices, col_indices)), shape=(self.n_vertices, self.n_vertices))
+        dy_mat = sparse.coo_matrix((datay, (row_indices, col_indices)), shape=(self.n_vertices, self.n_vertices))
+        dz_mat = sparse.coo_matrix((dataz, (row_indices, col_indices)), shape=(self.n_vertices, self.n_vertices))
+        return dx_mat, dy_mat, dz_mat

@@ -49,7 +49,7 @@
     },
     {
       "name": "Martian Atmosphere",
-      "thermal_conductivity": 2e-5,
+      "thermal_conductivity": 0.017,
       "molar_mass": 4.4e-2,
       "isobaric_mass_heat_capacity": 839,
       "convective_heat_transfer_coefficient": 4.184,

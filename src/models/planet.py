@@ -53,6 +53,12 @@ class Planet(CelestialBody):
         self.sunlight = self.position / np.linalg.norm(self.position)
 
 
+
+    def update(self, delta_t: float, star: Star):
+        self.update_sunlight(delta_t, star)
+        self.update_temperature(delta_t)
+
+
     def update_sunlight(self, delta_t: float, star: Star):
         self.current_angle = (self.current_angle + self.rotation_rate * delta_t) % (2*np.pi)
         try:

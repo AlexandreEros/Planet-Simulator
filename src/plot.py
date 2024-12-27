@@ -54,11 +54,12 @@ class Plot:
         elif plot_type=='pressure_gradient':
             planet, layer_idx = args
             coordinates = planet.surface.coordinates
-            pressure_gradient = planet.atmosphere.air_data.pressure_gradient
-            args = (coordinates, pressure_gradient)
+            pressure = planet.atmosphere.air_data.pressure[layer_idx]
+            pressure_gradient = planet.atmosphere.air_data.pressure_gradient[layer_idx]
+            args = (coordinates, pressure, pressure_gradient)
             altitude = planet.atmosphere.air_data.altitudes[layer_idx]
             kwargs['title'] = f'Pressure Gradient at {altitude/1000:.2f} km high'
-            self.func = self.worldmap
+            self.func = self.gradient
 
         elif plot_type=='elevation':
             self.func = self.worldmap
@@ -324,3 +325,65 @@ class Plot:
     @staticmethod
     def nop(*args, **kwargs):
         pass
+
+
+    @staticmethod
+    def gradient(coordinates: np.ndarray, pressure: np.ndarray, gradients: np.ndarray,
+                 resolution: int = 360, title: str = 'Pressure Gradient',
+                 cmap='viridis', **kwargs):
+        """
+        Plots the pressure as a background with pressure gradient vectors superimposed
+        on an equirectangular projection of a sphere.
+
+        Parameters:
+        - coordinates: (n, 3) array of Cartesian coordinates.
+        - pressure: (n,) array of pressure values corresponding to each vertex.
+        - gradients: (n, 2) array of gradients (dPressure/dLon, dPressure/dLat).
+        - resolution: Integer defining the grid resolution for plotting (default 360).
+        - title: Title of the plot.
+        - cmap: Colormap for the pressure background.
+        - kwargs: Additional argument settings for matplotlib's quiver function.
+        """
+        # Prepare coordinate arrays and gradients
+        lon_grid, lat_grid = np.meshgrid(
+            np.linspace(-180, 180, resolution // 4),
+            np.linspace(-90, 90, resolution // 8)
+        )
+        meshgrid = np.stack((lat_grid, lon_grid), axis=-1)
+
+        # Interpolate pressure values to grid for background
+        pressure_grid = griddata(
+            points=coordinates[:, :2],
+            values=pressure,
+            xi=meshgrid,
+            method='cubic'
+        )
+
+        # Interpolate gradients to the grid
+        gradient_lon = griddata(
+            points=coordinates[::4, :2],
+            values=gradients[::4, 0],
+            xi=meshgrid,
+            method='cubic'
+        )
+        gradient_lat = griddata(
+            points=coordinates[::4, :2],
+            values=gradients[::4, 1],
+            xi=meshgrid,
+            method='cubic'
+        )
+
+        fig, ax = plt.subplots(figsize=(12, 6))
+        ax.set_title(title)
+        ax.set_xlabel("Longitude")
+        ax.set_ylabel("Latitude")
+
+        # Plot the pressure as the background
+        img = ax.imshow(pressure_grid, extent=(-180, 180, -90, 90), origin='lower', cmap=cmap)
+        plt.colorbar(img, ax=ax, label='Pressure')
+
+        # Plot the gradients as quivers
+        ax.quiver(lon_grid, lat_grid, gradient_lon, gradient_lat, **kwargs)
+
+        plt.tight_layout()
+        plt.show()
