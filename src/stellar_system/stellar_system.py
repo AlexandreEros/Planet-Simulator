@@ -4,7 +4,7 @@ import json
 from .celestial_body import CelestialBody
 from .star import Star
 from .planet import Planet
-from .satellite import Satellite
+from .planet import Satellite
 
 class StellarSystem:
     def __init__(self, planet_name: str, body_file: str, G: float):

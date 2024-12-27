@@ -3,7 +3,7 @@ import json
 
 from src.plot import Plot
 from src.simulation import Simulation
-from src.models.planetary.surface import Surface
+from src.stellar_system.planet.surface import Surface
 from run import default_bodies
 
 def view():

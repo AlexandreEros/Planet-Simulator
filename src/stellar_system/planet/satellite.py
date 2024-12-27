@@ -1,12 +1,11 @@
 import numpy as np
 
-from .celestial_body import CelestialBody
 from .planet import Planet
 
 class Satellite(Planet):
     def __init__(self, name: str, body_type: str, mass: float, color: str,
                  orbital_data: dict, rotation_data: dict, surface_data: dict, atmosphere_data: dict,
-                 planet: Planet, parent: CelestialBody | None = None):
+                 planet: Planet, parent = None):
         self.planet = planet
         self.parent = self.planet if parent is None else parent
 

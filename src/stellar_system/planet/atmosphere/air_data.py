@@ -1,7 +1,7 @@
 import numpy as np
 from scipy import constants
 
-from .surface import Surface
+from src.stellar_system.planet.surface import Surface
 
 class AirData:
     def __init__(self, surface: Surface, planet_mass: float, material: dict, atmosphere_data: dict):

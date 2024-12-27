@@ -2,10 +2,10 @@ import numpy as np
 from scipy import constants
 
 from src.math_utils.vector_utils import deg2rad, rotate_vector, normalize, rotation_mat_y, rotation_mat_z
-from .celestial_body import CelestialBody
-from .star import Star
-from .planetary.surface import Surface
-from .planetary.atmosphere import Atmosphere
+from src.stellar_system.celestial_body import CelestialBody
+from src.stellar_system.star import Star
+from .surface import Surface
+from .atmosphere import Atmosphere
 
 class Planet(CelestialBody):
     def __init__(self, name: str, body_type: str, mass: float, color: str,

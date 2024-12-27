@@ -1,4 +1,3 @@
-import matplotlib
 # matplotlib.use('Agg')
 import matplotlib.pyplot as plt
 import matplotlib.animation as animation
@@ -7,9 +6,9 @@ from scipy.interpolate import griddata
 from datetime import datetime
 
 from .simulation import Simulation
-from .models.celestial_body import CelestialBody
-from .models.planetary.atmosphere import Atmosphere
-from src.math_utils.geodesic_grid import GeodesicGrid
+from .stellar_system.celestial_body import CelestialBody
+from .stellar_system.planet.atmosphere import Atmosphere
+from .math_utils.geodesic_grid import GeodesicGrid
 
 
 class Plot:

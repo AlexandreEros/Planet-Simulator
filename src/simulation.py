@@ -1,7 +1,7 @@
 import numpy as np
 from scipy import constants
 
-from .models.stellar_system import StellarSystem
+from .stellar_system.stellar_system import StellarSystem
 
 class Simulation:
     def __init__(self, plot_type: str, planet_name: str, body_file: str):

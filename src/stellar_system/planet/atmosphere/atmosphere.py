@@ -1,8 +1,8 @@
-from .surface import  Surface
+from src.stellar_system.planet.surface import  Surface
 from .air_data import AirData
 from .thermodynamics import Thermodynamics
 from .adjacency_manager import AdjacencyManager
-from .materials import Materials
+from src.stellar_system.planet.materials import Materials
 
 class Atmosphere:
     def __init__(self, surface: Surface, planet_mass: float, atmosphere_data: dict):

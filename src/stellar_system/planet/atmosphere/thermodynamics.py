@@ -3,7 +3,7 @@ from scipy import sparse
 
 from .air_data import AirData
 from .adjacency_manager import AdjacencyManager
-from .surface import Surface
+from src.stellar_system.planet.surface import Surface
 from src.math_utils.vector_utils import cartesian_to_spherical
 
 class Thermodynamics:
