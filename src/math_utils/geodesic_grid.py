@@ -1,7 +1,9 @@
 import numpy as np
 from scipy import sparse
 
-from .vector_utils import normalize, cartesian_to_spherical, build_gradient_operators
+from .vector_utils import normalize, cartesian_to_spherical
+from .vector_operators_spherical import VectorOperatorsSpherical
+
 
 class GeodesicGrid:
 # Create a basic geodesic grid (icosahedron-based)
@@ -42,7 +44,8 @@ class GeodesicGrid:
             self.adjacency_matrix = self.build_adjacency_matrix()
             self.dx, self.dy, self.dz = self.build_dxdydz_matrices()
 
-            self.grad_phi, self.grad_lambda = build_gradient_operators(self.latitude, self.longitude, self.adjacency_matrix.tocsr(), self.radius)
+            self.vector_operators = VectorOperatorsSpherical(self.latitude, self.longitude, self.adjacency_matrix.tocsr(), self.radius)
+            self.zonal_derivative, self.meridional_derivative = self.vector_operators.zonal_operator, self.vector_operators.meridional_operator
 
         except Exception as err:
             raise Exception(f"Error in the constructor of `GeodesicGrid`:\n{err}")

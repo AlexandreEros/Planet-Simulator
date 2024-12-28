@@ -33,14 +33,7 @@ class Planet(CelestialBody):
         surface_data['blackbody_temperature'] = self.blackbody_temperature
 
         self.surface = Surface(**surface_data)
-
         self.radius = self.surface.radius
-
-        self.is_airless = True
-        if 'surface_pressure' in atmosphere_data and atmosphere_data['surface_pressure'] > 0.0:
-            self.is_airless = False
-            self.atmosphere = Atmosphere(self.surface, self.mass, atmosphere_data)
-            self.surface.f_GH = self.atmosphere.air_data.f_GH
 
         self.rotation_rate = 2*np.pi / self.sidereal_day
         axial_tilt_matrix = rotation_mat_y(self.axial_tilt)
@@ -49,6 +42,12 @@ class Planet(CelestialBody):
         self.rotation_axis = np.dot(self.axial_tilt_matrix, np.array([0, 0, 1], dtype = np.float64))
         self.rotation_axis /= np.linalg.norm(self.rotation_axis)  # Just to be sure
         self.angular_velocity = self.rotation_rate * self.rotation_axis
+
+        self.is_airless = True
+        if 'surface_pressure' in atmosphere_data and atmosphere_data['surface_pressure'] > 0.0:
+            self.is_airless = False
+            self.atmosphere = Atmosphere(self.surface, self.mass, self.angular_velocity, atmosphere_data)
+            self.surface.f_GH = self.atmosphere.air_data.f_GH
 
         self.sunlight = self.position / np.linalg.norm(self.position)
 

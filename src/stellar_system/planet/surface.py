@@ -3,7 +3,7 @@ import numpy as np
 from scipy import constants
 
 from .materials import Materials
-from src.math_utils.geodesic_grid import GeodesicGrid
+from src.math_utils import GeodesicGrid
 from src.math_utils.vector_utils import cartesian_to_spherical, normalize
 
 class Surface(GeodesicGrid):

@@ -8,7 +8,7 @@ from datetime import datetime
 from .simulation import Simulation
 from .stellar_system.celestial_body import CelestialBody
 from .stellar_system.planet.atmosphere import Atmosphere
-from .math_utils.geodesic_grid import GeodesicGrid
+from .math_utils import GeodesicGrid
 
 
 class Plot:
