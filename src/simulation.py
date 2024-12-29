@@ -1,7 +1,7 @@
 import numpy as np
 from scipy import constants
 
-from .stellar_system.stellar_system import StellarSystem
+from .stellar_system import StellarSystem
 
 class Simulation:
     def __init__(self, plot_type: str, planet_name: str, body_file: str):
@@ -28,6 +28,12 @@ class Simulation:
             self.temperature_history = np.ndarray((n_snapshots,len(self.planet.surface.temperature)), dtype=np.float64)
         if self.plot_type=='heat':
             self.heat_history = np.ndarray((n_snapshots,len(self.planet.surface.temperature)), dtype=np.float64)
+        if self.plot_type=='air_temperature':
+            self.air_temperature_history = np.ndarray((n_snapshots,)+self.planet.atmosphere.adjacency_manager.atmosphere_shape, dtype=np.float64)
+        if self.plot_type=='pressure':
+            self.pressure_history = np.ndarray((n_snapshots,)+self.planet.atmosphere.adjacency_manager.atmosphere_shape, dtype=np.float64)
+        if self.plot_type=='density':
+            self.density_history = np.ndarray((n_snapshots,)+self.planet.atmosphere.adjacency_manager.atmosphere_shape, dtype=np.float64)
 
         time_since_snapshot = 0
         i_snapshot = 0
@@ -46,6 +52,12 @@ class Simulation:
                     self.temperature_history[i_snapshot] = self.planet.surface.temperature
                 if self.plot_type=='heat':
                     self.heat_history[i_snapshot] = self.planet.surface.surface_heat_flux()
+                if self.plot_type=='air_temperature':
+                    self.air_temperature_history[i_snapshot] = self.planet.atmosphere.air_data.temperature
+                if self.plot_type=='pressure':
+                    self.pressure_history[i_snapshot] = self.planet.atmosphere.air_data.pressure
+                if self.plot_type=='density':
+                    self.density_history[i_snapshot] = self.planet.atmosphere.air_data.density
 
                 i_snapshot += 1
 

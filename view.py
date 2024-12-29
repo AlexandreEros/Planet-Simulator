@@ -40,7 +40,8 @@ def view():
             surface_data = planet_data['surface_data']
             surface_data['blackbody_temperature'] = 123 # Who cares
         args=(Surface(**surface_data),)
-    elif plot_type in ('atmosphere', 'pressure', 'density', 'air_temperature', 'pressure_gradient'):
+
+    elif plot_type in ('atmosphere', 'pressure', 'density', 'air_temperature', 'pressure_gradient', 'velocity'):
         sim = Simulation(plot_type, planet_name, default_bodies)
         sim.run(duration, timestep, timestep)
         args = (sim.planet, idx)

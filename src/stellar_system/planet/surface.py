@@ -3,7 +3,7 @@ import numpy as np
 from scipy import constants
 
 from .materials import Materials
-from src.math_utils import GeodesicGrid
+from src.math_utils import GeodesicGrid, VectorOperatorsSpherical
 from src.math_utils.vector_utils import cartesian_to_spherical, normalize
 
 class Surface(GeodesicGrid):
@@ -22,6 +22,11 @@ class Surface(GeodesicGrid):
         self.relative_distance = self.elevate_terrain()
         self.vertices *= self.relative_distance[:,None]
         self.elevation = (self.relative_distance - 1.0) * self.radius
+
+        self.vector_operators = VectorOperatorsSpherical(self.latitude, self.longitude,
+                                                         self.elevation+self.radius,
+                                                         self.adjacency_matrix.tocsr())
+        self.zonal_derivative, self.meridional_derivative, self.vertical_derivative = self.vector_operators.partial_derivative_operators
 
         self.coordinates = np.apply_along_axis(cartesian_to_spherical, -1, self.vertices)
 

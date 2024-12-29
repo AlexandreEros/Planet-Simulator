@@ -50,11 +50,12 @@ class Plot:
             kwargs['title'] = f'Temperature (ºC) at {altitude/1000:.2f} km high'
             kwargs['cmap'] = 'plasma'
             self.func = self.worldmap
+
         elif plot_type=='pressure_gradient':
             planet, layer_idx = args
             coordinates = planet.surface.coordinates
             pressure = planet.atmosphere.air_data.pressure[layer_idx]
-            pressure_gradient = planet.atmosphere.air_data.pressure_gradient[layer_idx]
+            pressure_gradient = planet.atmosphere.air_flow.pressure_gradient[layer_idx]
             args = (coordinates, pressure, pressure_gradient)
             altitude = planet.atmosphere.air_data.altitudes[layer_idx]
             kwargs['title'] = f'Pressure Gradient at {altitude/1000:.2f} km high'
@@ -112,6 +113,16 @@ class Plot:
             kwargs['title'] = 'Heat Flux (W/m²)'
             kwargs['vmax'] = np.amax(heat)
             kwargs['vmin'] = np.amin(heat)
+
+
+        elif plot_type=='velocity':
+            planet, layer_idx = args
+            coordinates = planet.surface.coordinates
+            velocity = planet.atmosphere.air_flow.velocity[layer_idx]
+            args = (coordinates, velocity)
+            altitude = planet.atmosphere.air_data.altitudes[layer_idx]
+            kwargs['title'] = f'Streamlines of air flow at {altitude/1000:.2f} km high'
+            self.func = self.stream
 
         self.func(*args, **kwargs)
 
@@ -343,6 +354,7 @@ class Plot:
         - cmap: Colormap for the pressure background.
         - kwargs: Additional argument settings for matplotlib's quiver function.
         """
+
         # Prepare coordinate arrays and gradients
         lon_grid, lat_grid = np.meshgrid(
             np.linspace(-180, 180, resolution // 4),
@@ -383,6 +395,50 @@ class Plot:
 
         # Plot the gradients as quivers
         ax.quiver(lon_grid, lat_grid, gradient_lon, gradient_lat, **kwargs)
+
+        plt.tight_layout()
+        plt.show()
+
+
+    @staticmethod
+    def stream(coordinates: np.ndarray, velocity: np.ndarray, resolution: int = 360, **kwargs):
+        fig, ax = plt.subplots(figsize=(12, 6))
+        ax.set_title(kwargs.get('title', "Streamlines of Air Flow"))
+        ax.set_xlabel("Longitude")
+        ax.set_ylabel("Latitude")
+
+        # Create a meshgrid for the streamline plot
+        lon_grid, lat_grid = np.meshgrid(
+            np.linspace(-180, 180, resolution),  # Longitude from -180 to 180 degrees
+            np.linspace(-90, 90, resolution // 2)  # Latitude from -90 to 90 degrees
+        )
+        meshgrid = np.stack((lat_grid, lon_grid), axis=-1)
+
+        # Interpolate velocity components to the grid
+        velocity_u = griddata(
+            points=coordinates[:, :2],
+            values=velocity[:, 0],  # Zonal velocity
+            xi=meshgrid,
+            method='cubic'
+        )
+        velocity_v = griddata(
+            points=coordinates[:, :2],
+            values=velocity[:, 1],  # Meridional velocity
+            xi=meshgrid,
+            method='cubic'
+        )
+
+        # Calculate the speed for the background
+        speed = np.sqrt(velocity_u ** 2 + velocity_v ** 2)
+
+        # Plot the background speed
+        img = ax.imshow(speed, extent=(-180, 180, -90, 90), origin='lower', cmap='viridis')
+        plt.colorbar(img, ax=ax, label='Speed')
+
+        # Add streamlines for the airflow velocity
+        ax.streamplot(
+            lon_grid, lat_grid, velocity_u, velocity_v, color='white', density=1.5, linewidth=0.5
+        )
 
         plt.tight_layout()
         plt.show()

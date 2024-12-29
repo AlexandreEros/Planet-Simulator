@@ -10,7 +10,7 @@ class AirData:
         self.planet_mass = planet_mass
 
         self.n_layers = atmosphere_data.get('n_layers', 16)
-        self.n_vertices = self.surface.n_vertices
+        self.n_columns = self.surface.n_vertices
         
         self.material = material
         self.molar_mass = 0.02896 if 'molar_mass' not in self.material else self.material['molar_mass']
@@ -31,13 +31,17 @@ class AirData:
         self.top_geopotential = -np.log(1e-2) * scale_height_0  # Height where pressure drops to 1% of its value at the surface
         self.bottom = np.amin(self.surface.elevation)
         self.altitudes = self.bottom + (self.top_geopotential-self.bottom) * np.linspace(0,1, num=self.n_layers+1)[1:] ** 2
+        self.g = self.grav(self.altitudes)  # Gravity at all altitudes
+
+        self.coordinates = np.zeros((self.n_layers, self.n_columns, 3))
+        for i in range(self.n_layers):
+            self.coordinates[i] = self.surface.coordinates  # longitude and latitude
+            self.coordinates[i, :, 2] = self.altitudes[i]  # altitude
         
         layer_temperatures = self.T0 + self.lapse_rate * self.altitudes
-        self.temperature = np.full((self.n_layers, self.n_vertices), layer_temperatures[:,None])
+        self.temperature = np.full((self.n_layers, self.n_columns), layer_temperatures[:, None])
         self.pressure = self.get_pressure(self.temperature)
         self.density = self.get_density(self.temperature, self.pressure)
-
-        self.pressure_gradient = np.zeros((self.n_layers, self.n_vertices, 2))
 
         self.is_underground = self.altitudes[:, None] <= self.surface.elevation
         self.lowest_layer_above_surface = np.argmin(self.is_underground, axis=0)
@@ -45,13 +49,12 @@ class AirData:
 
 
     def get_pressure(self, temperature) -> np.ndarray:
-        shp = (self.n_layers, self.n_vertices)
+        shp = (self.n_layers, self.n_columns)
         pressure = np.zeros(shp)
         
         pressure[0, :] = self.surface_pressure
-        
-        g = self.grav(self.altitudes)  # Gravity at all altitudes
-        scale_height = self.R_specific * temperature / g[:, None]
+
+        scale_height = self.R_specific * temperature / self.g[:, None]
         
         # Calculate pressure for each layer using hydrostatic equilibrium
         for layer_idx in range(1, self.n_layers):

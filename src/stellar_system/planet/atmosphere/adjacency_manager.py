@@ -2,6 +2,8 @@ import numpy as np
 from scipy import sparse
 
 from .air_data import AirData
+from src.math_utils import VectorOperatorsSpherical
+from src.math_utils.vector_utils import spherical_to_cartesian
 
 class AdjacencyManager:
     def __init__(self, air_data: AirData, horizontal_adjacency_matrix: sparse.coo_matrix):
@@ -9,12 +11,21 @@ class AdjacencyManager:
         self.horizontal_adjacency_matrix = horizontal_adjacency_matrix
 
         self.n_layers = self.air_data.n_layers
-        self.n_vertices = self.air_data.n_vertices
+        self.n_columns = self.air_data.n_columns
+        self.atmosphere_shape = (self.n_layers, self.n_columns)
         self.is_underground = self.air_data.is_underground
         self.lowest_layer_above_surface = self.air_data.lowest_layer_above_surface
 
         self.adjacency_matrix = self.build_layered_adjacency_matrix(horizontal_adjacency_matrix)
-        self.laplacian_matrix = self.build_laplacian_matrix(self.adjacency_matrix)
+        self.laplacian_matrix = VectorOperatorsSpherical.build_laplacian_matrix(self.adjacency_matrix)
+
+        self.latitude = np.full(self.atmosphere_shape, fill_value=self.air_data.surface.latitude).flatten()
+        self.longitude = np.full(self.atmosphere_shape, fill_value=self.air_data.surface.longitude).flatten()
+        self.radius = np.full(self.atmosphere_shape, fill_value=(self.air_data.altitudes+self.air_data.surface.radius)[:,None]).flatten()
+        self.coordinates = np.stack([self.longitude, self.latitude, self.radius], axis=-1)
+        self.cartesian = spherical_to_cartesian(self.coordinates)
+
+        self.vector_operators = VectorOperatorsSpherical(self.latitude, self.longitude, self.radius, self.adjacency_matrix)
 
 
     def build_layered_adjacency_matrix(self, horizontal_adjacency_matrix: sparse.coo_matrix):
@@ -40,13 +51,13 @@ class AdjacencyManager:
         col_indices = []
         data = []
 
-        for v_idx in range(self.n_vertices):
+        for v_idx in range(self.n_columns):
             bottom_layer = self.lowest_layer_above_surface[v_idx]
             for layer_idx in range(bottom_layer, self.n_layers - 1):
                 dz = (self.air_data.altitudes[layer_idx + 1] - self.air_data.altitudes[layer_idx])
                 vertical_weight = 1.0 / dz
-                i = layer_idx * self.n_vertices + v_idx
-                j = (layer_idx + 1) * self.n_vertices + v_idx
+                i = layer_idx * self.n_columns + v_idx
+                j = (layer_idx + 1) * self.n_columns + v_idx
 
                 # Add vertical adjacency (symmetric)
                 row_indices.extend([i, j])
@@ -59,28 +70,14 @@ class AdjacencyManager:
         A = A_block_diag + V
 
         # Exclude edges connected to underground vertices
-        underground_idx = np.where(self.is_underground)[0]
-        mask = np.isin(V.row, underground_idx) | np.isin(V.col, underground_idx)
-        data = np.array(data)
-        A = sparse.csr_matrix((data[~mask], (V.row[~mask], V.col[~mask])), shape=A.shape)
-        return A
-
-
-    @staticmethod
-    def build_laplacian_matrix(A: sparse.csr_matrix):
-        """
-        Given the layered adjacency matrix (which represents vertical adjacency as well), build the corresponding
-        Laplacian matrix.
-
-        :param A: NxN adjacency matrix for the entire atmosphere, where N = n_layers * surface.n_vertices.
-                  Only off-diagonal entries represent connection weights. The weights are the inverse Euclidean
-                  distances
-        :return L: The Laplacian matrix
-        """
-        # Calculate the degree matrix as the sum of each row
-        row_sum = np.array(A.sum(axis=1))
-        D = sparse.diags(row_sum.ravel(), format='csr')
-
-        # Compute the Laplacian
-        L = D - A
-        return L
+        underground_idx = np.where(self.is_underground.ravel())[0]
+        row_indices, col_indices = A.nonzero()
+        data = A.data
+        element_is_underground = np.isin(row_indices, underground_idx) | np.isin(col_indices, underground_idx)
+        A = sparse.coo_matrix((data[~element_is_underground], (row_indices[~element_is_underground], col_indices[~element_is_underground])))
+        # Check if any underground node is still connected to above-ground nodes
+        connected = np.any(
+            sparse.find(A)[0][:, None] == underground_idx
+        )
+        assert not connected, "Adjacency matrix still connects underground nodes."
+        return A.tocsc()

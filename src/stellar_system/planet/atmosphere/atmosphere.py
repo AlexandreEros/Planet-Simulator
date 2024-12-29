@@ -4,6 +4,7 @@ from src.stellar_system.planet.surface import  Surface
 from .air_data import AirData
 from .thermodynamics import Thermodynamics
 from .adjacency_manager import AdjacencyManager
+from .air_flow import AirFlow
 from src.stellar_system.planet.materials import Materials
 
 class Atmosphere:
@@ -16,8 +17,9 @@ class Atmosphere:
         self.material = Materials.load(self.atmosphere_data['material_name'])
 
         self.air_data = AirData(self.surface, self.planet_mass, self.material, self.atmosphere_data)
-
         self.adjacency_manager = AdjacencyManager(self.air_data, self.surface.adjacency_matrix)
+        self.air_flow = AirFlow(self.air_data, self.surface, self.adjacency_manager, self.omega)
+
         self.laplacian_matrix = self.adjacency_manager.laplacian_matrix
 
         self.thermodynamics = Thermodynamics(self.air_data, self.adjacency_manager, self.surface, self.material)
@@ -27,7 +29,5 @@ class Atmosphere:
         self.thermodynamics.exchange_heat_with_surface(delta_t)
         self.thermodynamics.conduct_heat(delta_t)
         self.air_data.update()
-        for layer_idx in range(self.air_data.n_layers):
-            # self.air_data.pressure_gradient[layer_idx,:,0] = self.surface.zonal_derivative.dot(self.air_data.pressure[layer_idx])
-            # self.air_data.pressure_gradient[layer_idx,:,1] = self.surface.meridional_derivative.dot(self.air_data.pressure[layer_idx])
-            self.air_data.pressure_gradient[layer_idx] = self.surface.vector_operators.calculate_gradient(self.air_data.pressure[layer_idx])
+        self.air_flow.accelerate(delta_t)
+        self.air_flow.change_air_data(delta_t)
