@@ -1,13 +1,14 @@
-import numpy as np
+import cupy as cp
+from cupyx.scipy import sparse
 from scipy import sparse
 
 
 
 class VectorOperatorsSpherical:
-    def __init__(self, latitude: np.ndarray, longitude: np.ndarray, radius: np.ndarray, weights: sparse.csr_matrix):
-        self.latitude = latitude
-        self.longitude = longitude
-        self.radius = radius
+    def __init__(self, latitude: cp.ndarray, longitude: cp.ndarray, radius: cp.ndarray, weights: sparse.csr_matrix):
+        self.latitude = cp.array(latitude).flatten()
+        self.longitude = cp.array(longitude).flatten()
+        self.radius = cp.array(radius).flatten()
         self.weights = weights
 
         self.partial_derivative_operators = self.build_partial_derivative_operators()
@@ -39,19 +40,19 @@ class VectorOperatorsSpherical:
         cols_h = []
     
         # Precompute cos(latitude) for scaling longitude differences
-        cos_lat = np.cos(np.deg2rad(self.latitude))  # Convert degrees to radians if necessary
+        cos_lat = cp.cos(cp.deg2rad(self.latitude))  # Convert degrees to radians if necessary
     
         for i in range(N):
             # Extract neighbor indices for vertex i
             neighbors_indices = self.weights[i].nonzero()[1]
     
             # Extract differences
-            delta_lambda = np.deg2rad(self.longitude[neighbors_indices] - self.longitude[i])  # (M,)
-            delta_phi = np.deg2rad(self.latitude[neighbors_indices] - self.latitude[i])  # (M,)
+            delta_lambda = cp.deg2rad(self.longitude[neighbors_indices] - self.longitude[i])  # (M,)
+            delta_phi = cp.deg2rad(self.latitude[neighbors_indices] - self.latitude[i])  # (M,)
             delta_h = self.radius[neighbors_indices] - self.radius[i]  # (M,)
     
             # Optional: Handle longitude wrapping (e.g., -180 to 180)
-            delta_lambda = (delta_lambda + np.pi) % (2 * np.pi) - np.pi  # Wrap to [-180, 180]
+            delta_lambda = (delta_lambda + cp.pi) % (2 * cp.pi) - cp.pi  # Wrap to [-180, 180]
     
             # Scale delta_lambda by cos(phi) to account for spherical geometry
             delta_lambda_scaled = delta_lambda * cos_lat[i] * (self.radius[neighbors_indices] + self.radius[i]) / 2
@@ -59,10 +60,10 @@ class VectorOperatorsSpherical:
             delta_h_scaled = delta_h  # No additional scaling for elevation
     
             # Extract weights
-            w = self.weights[i].data  # (M,)
+            w = cp.array(self.weights[i].data)  # (M,)
     
             # Form matrix A (M x 3)
-            A = np.vstack((delta_lambda_scaled, delta_phi_scaled, delta_h_scaled)).T  # Shape (M, 3)
+            A = cp.vstack((delta_lambda_scaled, delta_phi_scaled, delta_h_scaled)).T  # Shape (M, 3)
     
             # Form weight matrix W (M x M), but we'll apply weights directly
             # Compute A^T W A
@@ -70,13 +71,13 @@ class VectorOperatorsSpherical:
             AtWA = AtW @ A  # Shape (3, 3)
     
             # Check if AtWA is invertible
-            if np.linalg.cond(AtWA) > 1 / np.finfo(AtWA.dtype).eps:
+            if cp.linalg.cond(AtWA) > 1 / cp.finfo(AtWA.dtype).eps:
                 # Singular or ill-conditioned; skip or handle appropriately
                 # Here, we choose to skip and leave derivatives as zero
                 continue
     
             # Compute C = (A^T W A)^-1 A^T W
-            C = np.linalg.inv(AtWA) @ AtW  # Shape (3, M)
+            C = cp.linalg.inv(AtWA) @ AtW  # Shape (3, M)
     
             # Extract coefficients for lambda, phi, and h
             C_lambda = C[0, :]  # Shape (M,)
@@ -100,15 +101,15 @@ class VectorOperatorsSpherical:
             # Central point
             rows_lambda.append(i)
             cols_lambda.append(i)
-            data_lambda.append(-np.sum(C_lambda))  # C_i_lambda multiplies f_i
+            data_lambda.append(-cp.sum(C_lambda))  # C_i_lambda multiplies f_i
     
             rows_phi.append(i)
             cols_phi.append(i)
-            data_phi.append(-np.sum(C_phi))  # C_i_phi multiplies f_i
+            data_phi.append(-cp.sum(C_phi))  # C_i_phi multiplies f_i
     
             rows_h.append(i)
             cols_h.append(i)
-            data_h.append(-np.sum(C_h))  # C_i_h multiplies f_i
+            data_h.append(-cp.sum(C_h))  # C_i_h multiplies f_i
     
         # Create sparse matrices in COO format, then convert to CSR
         M_lambda = sparse.coo_matrix((data_lambda, (rows_lambda, cols_lambda)), shape=(N, N)).tocsr()
@@ -119,12 +120,12 @@ class VectorOperatorsSpherical:
 
 
 
-    def calculate_gradient(self, values: np.ndarray) -> np.ndarray:
+    def calculate_gradient(self, values: cp.ndarray) -> cp.ndarray:
         """
         Computes the gradient of a scalar field defined on a spherical surface.
     
-        :param values: NumPy array of shape (N,) containing scalar values at vertices.
-        :return grad: NumPy array of shape (N,2) representing (∂f/∂lambda, ∂f/∂phi) for each vertex.
+        :param values: CuPy array of shape (N,) containing scalar values at vertices.
+        :return grad: CuPy array of shape (N,2) representing (∂f/∂lambda, ∂f/∂phi) for each vertex.
         """
         shape = values.shape
         values = values.flatten()
@@ -133,19 +134,19 @@ class VectorOperatorsSpherical:
         grad_lambda = self.zonal_operator.dot(values)  # ∂f/∂lambda for each vertex
         grad_phi = self.meridional_operator.dot(values)  # ∂f/∂phi for each vertex
         grad_h = self.vertical_operator.dot(values)  # ∂f/∂h for each vertex
-        gradient = np.stack([grad_lambda, grad_phi, grad_h], axis=-1)
+        gradient = cp.stack([grad_lambda, grad_phi, grad_h], axis=-1)
         return gradient.reshape(shape + (3,))
 
 
 
-    def calculate_divergence(self, vector_field: np.ndarray) -> np.ndarray:
+    def calculate_divergence(self, vector_field: cp.ndarray) -> cp.ndarray:
         """
         Computes the divergence of a vector field defined on a spherical surface.
     
         Parameters:
-        - vector_field: NumPy array of shape (..., 3) representing the vector field (v_lambda, v_phi, v_h) at each vertex.
+        - vector_field: CuPy array of shape (..., 3) representing the vector field (v_lambda, v_phi, v_h) at each vertex.
         Returns:
-        - divergence: Flat NumPy array representing the divergence of the vector field at each vertex.
+        - divergence: Flat CuPy array representing the divergence of the vector field at each vertex.
         """
         shape = vector_field.shape
         vector_field = vector_field.reshape((-1, 3))
@@ -164,13 +165,13 @@ class VectorOperatorsSpherical:
 
 
 
-    def calculate_curl(self, vector_field: np.ndarray) -> np.ndarray:
+    def calculate_curl(self, vector_field: cp.ndarray) -> cp.ndarray:
         """
         Computes the curl of a vector field defined on a spherical surface.
         Parameters:
-        - vector_field: NumPy array of shape (..., 3) representing the vector field (v_lambda, v_phi, v_h) at each vertex.
+        - vector_field: CuPy array of shape (..., 3) representing the vector field (v_lambda, v_phi, v_h) at each vertex.
         Returns:
-        - curl: NumPy array of shape (...,3) representing the curl of the vector field at each vertex.
+        - curl: CuPy array of shape (...,3) representing the curl of the vector field at each vertex.
         """
         shape = vector_field.shape
         vector_field = vector_field.reshape((-1,3))
@@ -186,24 +187,24 @@ class VectorOperatorsSpherical:
         curl_h = self.zonal_operator.dot(v_phi) - self.meridional_operator.dot(v_lambda)  # ∂v_phi/∂lambda - ∂v_lambda/∂phi
 
         # Combine curl components
-        curl = np.stack([curl_lambda, curl_phi, curl_h], axis=-1)
+        curl = cp.stack([curl_lambda, curl_phi, curl_h], axis=-1)
         return curl.reshape(shape)
 
 
 
-    def calculate_vector_gradient(self, vector_field: np.ndarray) -> np.ndarray:
+    def calculate_vector_gradient(self, vector_field: cp.ndarray) -> cp.ndarray:
         """
         Computes the gradient of a vector field defined on a spherical surface.
 
-        :param vector_field: NumPy array of shape (..., 3) containing the vector field components
+        :param vector_field: CuPy array of shape (..., 3) containing the vector field components
                              (v_lambda, v_phi, v_h) at each vertex.
-        :return: NumPy array of shape (N, 3, 3) representing the gradient tensor with
+        :return: CuPy array of shape (N, 3, 3) representing the gradient tensor with
                  ∂v/∂lambda, ∂v/∂phi, and ∂v/∂h for each vertex.
         """
         shape = vector_field.shape
         vector_field = vector_field.reshape((-1, 3))
         N = vector_field.shape[0]
-        gradient_tensor = np.zeros((N, 3, 3))
+        gradient_tensor = cp.zeros((N, 3, 3))
 
         # Split the vector field into zonal, meridional, and vertical components
         v_lambda = vector_field[:, 0]  # Zonal component of the vector field
@@ -239,14 +240,14 @@ class VectorOperatorsSpherical:
         :return L: The Laplacian matrix
         """
         # Calculate the degree matrix as the sum of each row
-        row_sum = np.array(A.sum(axis=1))
+        row_sum = cp.array(A.sum(axis=1))
         D = sparse.diags(row_sum.ravel(), format='csr')
 
         # Compute the Laplacian
         L = D - A
         return L
 
-    def calculate_laplacian(self, values: np.ndarray) -> np.ndarray:
+    def calculate_laplacian(self, values: cp.ndarray) -> cp.ndarray:
         shape = values.shape
         N = self.laplacian_operator.shape[0]
         values = values.reshape((N,-1))

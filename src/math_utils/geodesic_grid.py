@@ -1,3 +1,5 @@
+import cupy as cp
+from cupyx.scipy import sparse
 import numpy as np
 from scipy import sparse
 
@@ -30,13 +32,13 @@ class GeodesicGrid:
             self.radius = radius
 
             self.mesh = self.geodesic_subdivide()
-            self.vertices = self.radius * self.mesh[0]
-            self.faces = self.mesh[1]
+            self.vertices = cp.array(self.radius * self.mesh[0])
+            self.faces = cp.array(self.mesh[1])
 
             self.n_vertices = len(self.vertices)
             self.n_faces = len(self.faces)
 
-            coordinates = np.apply_along_axis(cartesian_to_spherical, -1, self.vertices)
+            coordinates = cp.apply_along_axis(cartesian_to_spherical, -1, self.vertices)
             self.longitude = coordinates[:, 0]
             self.latitude = coordinates[:, 1]
 
@@ -109,7 +111,7 @@ class GeodesicGrid:
             v1, v2, v3 = face
 
             for (a, b) in [(v1, v2), (v2, v3), (v3, v1)]:
-                dist = np.linalg.norm(self.vertices[a] - self.vertices[b])
+                dist = cp.linalg.norm(self.vertices[a] - self.vertices[b])
                 weight = 1.0 / dist if dist > 0 else 0
 
                 row_indices.extend([a, b])

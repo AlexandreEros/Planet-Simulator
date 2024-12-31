@@ -1,3 +1,4 @@
+import cupy as cp
 import numpy as np
 
 from src.math_utils.vector_utils import polar_to_cartesian_velocity, cartesian_to_polar_velocity
@@ -8,7 +9,7 @@ from src.stellar_system.planet.surface import Surface
 
 
 class AirFlow:
-    def __init__(self, air_data: AirData, surface: Surface, adjacency: AdjacencyManager, angular_velocity_vector: np.ndarray):
+    def __init__(self, air_data: AirData, surface: Surface, adjacency: AdjacencyManager, angular_velocity_vector: cp.ndarray):
         """
         Initializes the calculator with the given physical parameters.
 
@@ -20,7 +21,7 @@ class AirFlow:
         self.air_data = air_data
         self.surface = surface
         self.adjacency = adjacency
-        self.omega = np.array(angular_velocity_vector)
+        self.omega = cp.array(angular_velocity_vector)
 
         self.n_layers = self.air_data.n_layers
         self.n_columns = self.surface.n_vertices
@@ -28,9 +29,9 @@ class AirFlow:
         self.R_specific = self.air_data.R_specific
         self.dynamic_viscosity = self.air_data.material['dynamic_viscosity']
 
-        self.omega_spherical = np.array(polar_to_cartesian_velocity(*angular_velocity_vector,
+        self.omega_spherical = cp.array(polar_to_cartesian_velocity(*angular_velocity_vector,
                                                                     self.adjacency.coordinates)).reshape((self.n_layers, self.n_columns, 3,))
-        self.cos_lat = np.cos(np.deg2rad(self.air_data.coordinates[...,1])).reshape((self.n_layers, self.n_columns))
+        self.cos_lat = cp.cos(cp.deg2rad(self.air_data.coordinates[...,1])).reshape((self.n_layers, self.n_columns))
 
         self.zonal_derivative, self.meridional_derivative, self.vertical_derivative = self.adjacency.vector_operators.partial_derivative_operators
         self.calculate_gradient = self.adjacency.vector_operators.calculate_gradient
@@ -39,24 +40,24 @@ class AirFlow:
         self.calculate_laplacian = self.adjacency.vector_operators.calculate_laplacian
         self.calculate_gradient_tensor = self.adjacency.vector_operators.calculate_vector_gradient
 
-        self.pressure_gradient = np.zeros((self.n_layers, self.n_columns, 3))
-        self.temperature_gradient = np.zeros((self.n_layers, self.n_columns, 3))
-        self.net_force = np.zeros((self.n_layers, self.n_columns, 3))
+        self.pressure_gradient = cp.zeros((self.n_layers, self.n_columns, 3))
+        self.temperature_gradient = cp.zeros((self.n_layers, self.n_columns, 3))
+        self.net_force = cp.zeros((self.n_layers, self.n_columns, 3))
 
-        self.velocity = np.zeros((self.n_layers, self.n_columns, 3))
-        self.temperature_rate = np.zeros_like(self.air_data.temperature)
-        self.density_rate = np.zeros_like(self.air_data.density)
-        self.velocity_divergence = np.zeros((self.n_layers, self.n_columns))
-        self.velocity_laplacian = np.zeros((self.n_layers, self.n_columns, 3))
-        self.velocity_gradient_tensor = np.zeros((self.n_layers, self.n_columns, 3, 3))
+        self.velocity = cp.zeros((self.n_layers, self.n_columns, 3))
+        self.temperature_rate = cp.zeros_like(self.air_data.temperature)
+        self.density_rate = cp.zeros_like(self.air_data.density)
+        self.velocity_divergence = cp.zeros((self.n_layers, self.n_columns))
+        self.velocity_laplacian = cp.zeros((self.n_layers, self.n_columns, 3))
+        self.velocity_gradient_tensor = cp.zeros((self.n_layers, self.n_columns, 3, 3))
 
 
     def update_gradients(self):
-        self.pressure_gradient = self.calculate_gradient(self.air_data.pressure.ravel()).reshape(self.shape + (3,))
-        self.temperature_gradient = self.calculate_gradient(self.air_data.temperature.ravel()).reshape(self.shape + (3,))
-        self.velocity_divergence = self.calculate_divergence(self.velocity.reshape((-1,3))).reshape(self.shape)
-        self.velocity_laplacian = self.calculate_laplacian(self.velocity)
-        self.velocity_gradient_tensor = self.calculate_gradient_tensor(self.velocity)
+        self.pressure_gradient[...] = self.calculate_gradient(self.air_data.pressure.ravel()).reshape(self.shape + (3,))
+        self.temperature_gradient[...] = self.calculate_gradient(self.air_data.temperature.ravel()).reshape(self.shape + (3,))
+        self.velocity_divergence[...] = self.calculate_divergence(self.velocity.reshape((-1,3))).reshape(self.shape)
+        self.velocity_laplacian[...] = self.calculate_laplacian(self.velocity)
+        self.velocity_gradient_tensor[...] = self.calculate_gradient_tensor(self.velocity)
 
     def apply_forces(self):
         # ρ(u · ∇)u
@@ -68,9 +69,9 @@ class AirFlow:
         self.update_gradients()
         gradient_force = -self.pressure_gradient
 
-        weight = self.air_data.density[...,None] * self.air_data.g[...,None] * np.array([0.0, 0.0, -1.0])
+        weight = self.air_data.density[...,None] * self.air_data.g[...,None] * cp.array([0.0, 0.0, -1.0])
 
-        coriolis_force = -2 * self.air_data.density[...,None] * np.cross(self.omega_spherical, self.velocity)
+        coriolis_force = -2 * self.air_data.density[...,None] * cp.cross(self.omega_spherical, self.velocity)
 
         viscous_force = self.dynamic_viscosity * self.velocity_laplacian
 
@@ -84,7 +85,7 @@ class AirFlow:
         self.velocity[is_air] += delta_t * self.net_force[is_air] / self.air_data.density[is_air][...,None]
         self.velocity[0] = 0.0 # No slip
 
-        self.temperature_rate[...] = -np.einsum('...i,...i->...', self.velocity, self.temperature_gradient)
+        self.temperature_rate[...] = -cp.einsum('...i,...i->...', self.velocity, self.temperature_gradient)
         self.density_rate[...] = -self.air_data.density * self.velocity_divergence
 
 
@@ -102,6 +103,6 @@ class AirFlow:
         #                      f'\n{self.velocity.reshape((-1,3))[wrong_idx]=};'
         #                      f'\n{self.temperature_gradient.reshape((-1,3))[wrong_idx]=};')
 
-        self.air_data.temperature[...] = np.fmax(self.air_data.temperature, 0.0)
-        self.air_data.density[...] = np.fmax(self.air_data.density, 0.0)
-        self.air_data.pressure[...] = np.fmax(self.air_data.pressure, 0.0)
+        self.air_data.temperature[...] = cp.fmax(self.air_data.temperature, 0.0)
+        self.air_data.density[...] = cp.fmax(self.air_data.density, 0.0)
+        self.air_data.pressure[...] = cp.fmax(self.air_data.pressure, 0.0)

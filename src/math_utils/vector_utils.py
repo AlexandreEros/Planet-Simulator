@@ -1,85 +1,86 @@
 import numpy as np
-from scipy.spatial.transform import Rotation
+import cupy as cp
+from cupyx.scipy.spatial.transform import Rotation
 
 
-def rotation_mat_x(angle_rad: float) -> np.ndarray:
+def rotation_mat_x(angle_rad: float) -> cp.ndarray:
     """Rotation matrix to rotate a vector around the X-axis by a given angle (in radians)."""
     rotation_matrix = np.array([
         [1, 0, 0],
-        [0, np.cos(angle_rad), -np.sin(angle_rad)],
-        [0, np.sin(angle_rad), np.cos(angle_rad)]
+        [0, cp.cos(angle_rad), -cp.sin(angle_rad)],
+        [0, cp.sin(angle_rad), cp.cos(angle_rad)]
     ])
     return rotation_matrix
 
-def rotation_mat_y(angle_rad: float) -> np.ndarray:
+def rotation_mat_y(angle_rad: float) -> cp.ndarray:
     """Rotation matrix to rotate a vector around the Y-axis by a given angle (in radians)."""
-    rotation_matrix = np.array([
-        [np.cos(angle_rad), 0, np.sin(angle_rad)],
+    rotation_matrix = cp.array([
+        [cp.cos(angle_rad), 0, cp.sin(angle_rad)],
         [0, 1, 0],
-        [-np.sin(angle_rad), 0, np.cos(angle_rad)]
+        [-cp.sin(angle_rad), 0, cp.cos(angle_rad)]
     ])
     return rotation_matrix
 
-def rotation_mat_z(angle_rad: float) -> np.ndarray:
+def rotation_mat_z(angle_rad: float) -> cp.ndarray:
     """Rotation matrix to rotate a vector around the Z-axis by a given angle (in radians)."""
-    rotation_matrix = np.array([
-        [np.cos(angle_rad), -np.sin(angle_rad), 0],
-        [np.sin(angle_rad), np.cos(angle_rad), 0],
+    rotation_matrix = cp.array([
+        [cp.cos(angle_rad), -cp.sin(angle_rad), 0],
+        [cp.sin(angle_rad), cp.cos(angle_rad), 0],
         [0, 0, 1]
     ])
     return rotation_matrix
 
 
-def rotate_vector_rodrigues(vector: np.ndarray, axis: np.ndarray, angle_rad: float) -> np.ndarray:
+def rotate_vector_rodrigues(vector: cp.ndarray, axis: cp.ndarray, angle_rad: float) -> cp.ndarray:
     """Rotate a vector around an arbitrary axis by a given angle (in radians) using Rodrigues' rotation formula."""
-    axis = axis / np.linalg.norm(axis)  # Normalize the axis of rotation
-    cos_theta = np.cos(angle_rad)
-    sin_theta = np.sin(angle_rad)
+    axis = axis / cp.linalg.norm(axis, axis=-1)  # Normalize the axis of rotation
+    cos_theta = cp.cos(angle_rad)
+    sin_theta = cp.sin(angle_rad)
 
     # Rodrigues' rotation formula
     rotated_vector = (vector * cos_theta +
-                      np.cross(axis, vector) * sin_theta +
-                      axis * np.dot(axis, vector) * (1 - cos_theta))
+                      cp.cross(axis, vector) * sin_theta +
+                      axis * cp.dot(axis, vector) * (1 - cos_theta))
     return rotated_vector
 
 
-def rotate_vector(vector: np.ndarray, axis: np.ndarray, angle_rad: float) -> np.ndarray:
+def rotate_vector(vector: cp.ndarray, axis: cp.ndarray, angle_rad: float) -> cp.ndarray:
     """Rotate a vector around an arbitrary axis using quaternions."""
-    axis = axis / np.linalg.norm(axis)  # Normalize the axis of rotation
+    axis = axis / cp.linalg.norm(axis)  # Normalize the axis of rotation
     rotation = Rotation.from_rotvec(angle_rad * axis)
     return rotation.apply(vector)
 
 deg2rad = lambda ang_deg: np.pi * ang_deg / 180.0
 
-normalize = lambda vec: vec / np.linalg.norm(vec, axis=-1)[..., None]
+normalize = lambda vec: vec / cp.linalg.norm(vec, axis=-1)[..., None]
 
 
-def cartesian_to_spherical(vertex: np.ndarray):
+def cartesian_to_spherical(vertex: cp.ndarray):
     x, y, z = tuple(vertex.tolist())
-    r = np.linalg.norm(vertex)
-    longitude = np.degrees(np.arctan2(y, x))
-    latitude = np.degrees(np.arcsin(z / r))
+    r = cp.linalg.norm(vertex)
+    longitude = cp.degrees(cp.arctan2(y, x))
+    latitude = cp.degrees(cp.arcsin(z / r))
     return longitude, latitude, r
 
 
-def spherical_to_cartesian(coordinates: np.ndarray):
+def spherical_to_cartesian(coordinates: cp.ndarray):
     latitude, longitude, r = tuple(coordinates.T.tolist())
-    x = r * np.cos(np.deg2rad(latitude)) * np.cos(np.deg2rad(longitude))
-    y = r * np.cos(np.deg2rad(latitude)) * np.sin(np.deg2rad(longitude))
-    z = r * np.sin(np.deg2rad(latitude))
-    return np.stack([x.T, y.T, z.T], axis=-1)
+    x = r * cp.cos(cp.deg2rad(latitude)) * cp.cos(cp.deg2rad(longitude))
+    y = r * cp.cos(cp.deg2rad(latitude)) * cp.sin(cp.deg2rad(longitude))
+    z = r * cp.sin(cp.deg2rad(latitude))
+    return cp.stack([x.T, y.T, z.T], axis=-1)
 
 
-def subsolar_point(sunlight_vector: np.ndarray) -> tuple[float, float]:
-    sunlight_vector /= np.linalg.norm(sunlight_vector)
+def subsolar_point(sunlight_vector: cp.ndarray) -> tuple[float, float]:
+    sunlight_vector /= cp.linalg.norm(sunlight_vector)
     x, y, z = tuple(sunlight_vector.tolist())
-    latitude = np.rad2deg(np.arcsin(z))
-    longitude = np.rad2deg(np.arctan2(y, x))
+    latitude = cp.rad2deg(cp.arcsin(z))
+    longitude = cp.rad2deg(cp.arctan2(y, x))
     return float(latitude), float(longitude)
 
 
 
-def polar_to_cartesian_velocity(zonal, meridional, vertical, cartesian_coords) -> np.ndarray:
+def polar_to_cartesian_velocity(zonal, meridional, vertical, cartesian_coords) -> cp.ndarray:
     """
     Convert velocity components from polar coordinates to Cartesian coordinates.
 
@@ -90,20 +91,20 @@ def polar_to_cartesian_velocity(zonal, meridional, vertical, cartesian_coords) -
         cartesian_coords: Cartesian coordinates (x, y, z) of the points (array-like of shape (..., 3)).
 
     Returns:
-        np.ndarray: Velocities in Cartesian coordinates (vx, vy, vz) for all input points.
+        cp.ndarray: Velocities in Cartesian coordinates (vx, vy, vz) for all input points.
     """
     
     # Normalize Cartesian coordinates to get the 'up' direction
-    up = cartesian_coords / np.linalg.norm(cartesian_coords, axis=-1, keepdims=True)
+    up = cartesian_coords / cp.linalg.norm(cartesian_coords, axis=-1, keepdims=True)
     
     # Calculate the east vector as the cross product of up and the Z-axis (0, 0, 1)
-    z_axis = np.array([0, 0, 1])
-    east = np.cross(z_axis, up)
-    east = east / np.linalg.norm(east, axis=-1, keepdims=True)
+    z_axis = cp.array([0, 0, 1])
+    east = cp.cross(z_axis, up)
+    east = east / cp.linalg.norm(east, axis=-1, keepdims=True)
     
     # Calculate the north vector as the cross product of up and east
-    north = np.cross(up, east)
-    north = north / np.linalg.norm(north, axis=-1, keepdims=True)
+    north = cp.cross(up, east)
+    north = north / cp.linalg.norm(north, axis=-1, keepdims=True)
     
     # Combine velocity components into Cartesian coordinates
     cartesian_velocity = (zonal[..., None] * east +
@@ -113,8 +114,8 @@ def polar_to_cartesian_velocity(zonal, meridional, vertical, cartesian_coords) -
     return cartesian_velocity
 
 
-def cartesian_to_polar_velocity(cartesian_velocity: np.ndarray, cartesian_coords: np.ndarray) -> tuple[
-    np.ndarray, np.ndarray, np.ndarray]:
+def cartesian_to_polar_velocity(cartesian_velocity: cp.ndarray, cartesian_coords: cp.ndarray) -> tuple[
+    cp.ndarray, cp.ndarray, cp.ndarray]:
     """
     Convert velocity from Cartesian coordinates to polar velocity components.
 
@@ -128,20 +129,20 @@ def cartesian_to_polar_velocity(cartesian_velocity: np.ndarray, cartesian_coords
     """
 
     # Normalize Cartesian coordinates to get the 'up' direction
-    up = cartesian_coords / np.linalg.norm(cartesian_coords, axis=-1, keepdims=True)
+    up = cartesian_coords / cp.linalg.norm(cartesian_coords, axis=-1, keepdims=True)
 
     # Calculate the east vector as the cross product of up and the Z-axis (0, 0, 1)
-    z_axis = np.array([0, 0, 1])
-    east = np.cross(z_axis, up)
-    east = east / np.linalg.norm(east, axis=-1, keepdims=True)
+    z_axis = cp.array([0, 0, 1])
+    east = cp.cross(z_axis, up)
+    east = east / cp.linalg.norm(east, axis=-1, keepdims=True)
 
     # Calculate the north vector as the cross product of up and east
-    north = np.cross(up, east)
-    north = north / np.linalg.norm(north, axis=-1, keepdims=True)
+    north = cp.cross(up, east)
+    north = north / cp.linalg.norm(north, axis=-1, keepdims=True)
 
     # Compute zonal, meridional, and vertical components
-    zonal = np.sum(cartesian_velocity * east, axis=-1)
-    meridional = np.sum(cartesian_velocity * north, axis=-1)
-    vertical = np.sum(cartesian_velocity * up, axis=-1)
+    zonal = cp.sum(cartesian_velocity * east, axis=-1)
+    meridional = cp.sum(cartesian_velocity * north, axis=-1)
+    vertical = cp.sum(cartesian_velocity * up, axis=-1)
 
     return zonal, meridional, vertical

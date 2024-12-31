@@ -1,3 +1,4 @@
+import cupy as cp
 import numpy as np
 from scipy import constants
 
@@ -20,8 +21,7 @@ class Simulation:
 
         self.position_history = {body.name: np.ndarray((n_snapshots, 3), dtype=np.float64)
                                  for body in self.stellar_system.bodies}
-        self.sunlight_vector_history = {body.name: np.ndarray((n_snapshots, 3), dtype=np.float64)
-                                 for body in self.stellar_system.bodies if body.body_type=='planet'}
+
         if self.plot_type=='irradiance':
             self.irradiance_history = np.ndarray((n_snapshots,len(self.planet.surface.irradiance)), dtype=np.float64)
         if self.plot_type=='temperature':
@@ -42,22 +42,20 @@ class Simulation:
                 time_since_snapshot = 0
                 for body in self.stellar_system.bodies:
                     if self.plot_type=='orbits':
-                        self.position_history[body.name][i_snapshot] = body.position
-                    if body.body_type == 'planet':
-                        self.sunlight_vector_history[body.name][i_snapshot] = body.sunlight
+                        self.position_history[body.name][i_snapshot] = body.position.asnumpy()
 
                 if self.plot_type=='irradiance':
-                    self.irradiance_history[i_snapshot] = self.planet.surface.irradiance
+                    self.irradiance_history[i_snapshot] = self.planet.surface.irradiance.asnumpy()
                 if self.plot_type=='temperature':
-                    self.temperature_history[i_snapshot] = self.planet.surface.temperature
+                    self.temperature_history[i_snapshot] = self.planet.surface.temperature.asnumpy()
                 if self.plot_type=='heat':
-                    self.heat_history[i_snapshot] = self.planet.surface.surface_heat_flux()
+                    self.heat_history[i_snapshot] = self.planet.surface.surface_heat_flux().asnumpy()
                 if self.plot_type=='air_temperature':
-                    self.air_temperature_history[i_snapshot] = self.planet.atmosphere.air_data.temperature
+                    self.air_temperature_history[i_snapshot] = self.planet.atmosphere.air_data.temperature.asnumpy()
                 if self.plot_type=='pressure':
-                    self.pressure_history[i_snapshot] = self.planet.atmosphere.air_data.pressure
+                    self.pressure_history[i_snapshot] = self.planet.atmosphere.air_data.pressure.asnumpy()
                 if self.plot_type=='density':
-                    self.density_history[i_snapshot] = self.planet.atmosphere.air_data.density
+                    self.density_history[i_snapshot] = self.planet.atmosphere.air_data.density.asnumpy()
 
                 i_snapshot += 1
 

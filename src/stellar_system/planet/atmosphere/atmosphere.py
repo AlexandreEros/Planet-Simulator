@@ -1,3 +1,4 @@
+import cupy as cp
 import numpy as np
 
 from src.stellar_system.planet.surface import  Surface
@@ -8,7 +9,7 @@ from .air_flow import AirFlow
 from src.stellar_system.planet.materials import Materials
 
 class Atmosphere:
-    def __init__(self, surface: Surface, planet_mass: float, omega: np.ndarray, atmosphere_data: dict):
+    def __init__(self, surface: Surface, planet_mass: float, omega: cp.ndarray, atmosphere_data: dict):
         self.surface = surface
         self.planet_mass = planet_mass
         self.omega = omega  # Planetary angular velocity vector

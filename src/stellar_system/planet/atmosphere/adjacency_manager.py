@@ -1,5 +1,6 @@
+import cupy as cp
 import numpy as np
-from scipy import sparse
+from cupyx.scipy import sparse
 
 from .air_data import AirData
 from src.math_utils import VectorOperatorsSpherical
@@ -13,13 +14,11 @@ class AdjacencyManager:
         self.n_layers = self.air_data.n_layers
         self.n_columns = self.air_data.n_columns
         self.atmosphere_shape = (self.n_layers, self.n_columns)
-        # self.is_underground = self.air_data.is_underground
-        # self.lowest_layer_above_surface = self.air_data.lowest_layer_above_surface
 
-        self.latitude = np.full(self.atmosphere_shape, fill_value=self.air_data.surface.latitude)
-        self.longitude = np.full(self.atmosphere_shape, fill_value=self.air_data.surface.longitude)
+        self.latitude = cp.full(self.atmosphere_shape, fill_value=self.air_data.surface.latitude)
+        self.longitude = cp.full(self.atmosphere_shape, fill_value=self.air_data.surface.longitude)
         self.radius = self.air_data.surface.radius + self.air_data.altitudes
-        self.coordinates = np.stack([self.longitude.ravel(), self.latitude.ravel(), self.radius.ravel()], axis=-1)
+        self.coordinates = cp.stack([self.longitude.ravel(), self.latitude.ravel(), self.radius.ravel()], axis=-1)
         self.cartesian = spherical_to_cartesian(self.coordinates)
 
         self.adjacency_matrix = self.build_layered_adjacency_matrix(horizontal_adjacency_matrix)
@@ -70,4 +69,4 @@ class AdjacencyManager:
         A = A_block_diag + V
         A.eliminate_zeros()
 
-        return A.tocsc()
+        return A.tocsr()

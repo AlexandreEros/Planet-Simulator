@@ -1,3 +1,4 @@
+import cupy as cp
 import numpy as np
 from scipy import constants
 
@@ -24,7 +25,7 @@ class Planet(CelestialBody):
         self.ecliptic_longitude_of_north_pole = 0.0 if 'ecliptic_longitude_of_north_pole_deg' not in rotation_data else deg2rad(rotation_data['ecliptic_longitude_of_north_pole_deg'])
         self.initial_season_rad = self.ecliptic_longitude_of_north_pole - self.argument_of_perihelion
         initial_longitude = 0.0 if 'subsolar_point_longitude' not in rotation_data else rotation_data['subsolar_point_longitude']
-        self.current_angle = np.pi + self.initial_season_rad - deg2rad(initial_longitude)
+        self.current_angle = np.pi + self.initial_season_rad - cp.deg2rad(initial_longitude)
 
         self.bond_albedo = surface_data['bond_albedo']
         semi_major_axis = self.semi_major_axis if self.body_type=='planet' else self.parent.semi_major_axis
@@ -35,12 +36,12 @@ class Planet(CelestialBody):
         self.surface = Surface(**surface_data)
         self.radius = self.surface.radius
 
-        self.rotation_rate = 2*np.pi / self.sidereal_day
         axial_tilt_matrix = rotation_mat_y(self.axial_tilt)
-        axial_tilt_matrix = np.dot(rotation_mat_z(self.ecliptic_longitude_of_north_pole), axial_tilt_matrix)
-        self.axial_tilt_matrix = np.dot(self.inclination_matrix, axial_tilt_matrix)
-        self.rotation_axis = np.dot(self.axial_tilt_matrix, np.array([0, 0, 1], dtype = np.float64))
-        self.rotation_axis /= np.linalg.norm(self.rotation_axis)  # Just to be sure
+        axial_tilt_matrix = cp.dot(rotation_mat_z(self.ecliptic_longitude_of_north_pole), axial_tilt_matrix)
+        self.axial_tilt_matrix = cp.dot(self.inclination_matrix, axial_tilt_matrix)
+        self.rotation_axis = cp.dot(self.axial_tilt_matrix, cp.array([0, 0, 1], dtype = 'float64'))
+        self.rotation_axis /= cp.linalg.norm(self.rotation_axis)  # Just to be sure
+        self.rotation_rate = 2*np.pi / self.sidereal_day
         self.angular_velocity = self.rotation_rate * self.rotation_axis
 
         self.is_airless = True
@@ -49,7 +50,7 @@ class Planet(CelestialBody):
             self.atmosphere = Atmosphere(self.surface, self.mass, self.angular_velocity, atmosphere_data)
             self.surface.f_GH = self.atmosphere.air_data.f_GH
 
-        self.sunlight = self.position / np.linalg.norm(self.position)
+        self.sunlight = self.position / cp.linalg.norm(self.position)
 
 
 
@@ -66,13 +67,13 @@ class Planet(CelestialBody):
             raise ZeroDivisionError("Division by zero in `Planet.update_sunlight`; attribute `Planet.position` has "
                                     "a magnitude of zero, and an attempt was made to normalize it.")
 
-        r = np.linalg.norm(self.position - star.position)
+        r = cp.linalg.norm(self.position - star.position)
         solar_flux = star.power / (4 * np.pi * r ** 2)
         absolute_sunlight_vector = solar_flux * absolute_sunlight_unit_vector
 
         # Convert to the planet's rotating frame of reference
         self.sunlight = rotate_vector(absolute_sunlight_vector, self.rotation_axis, -self.current_angle)
-        self.sunlight = np.dot(self.sunlight, self.axial_tilt_matrix)
+        self.sunlight = cp.dot(self.sunlight, self.axial_tilt_matrix)
 
         self.surface.update_irradiance(self.sunlight)
 

@@ -277,15 +277,15 @@ class Plot:
         )
         meshgrid = np.stack((lat_grid, lon_grid), axis=-1)
 
-        grid_values = griddata(
+        grid_values = np.array(griddata(
             points=coordinates[:,:2],  # Points at which we have data
             values=variable,  # Data values
             xi=meshgrid,  # Points to interpolate at
             method='cubic'  # 'cubic', 'linear', or 'nearest'
-        )
+        ))
 
         fig = plt.figure(figsize=(12, 6))
-        plt.imshow(grid_values, extent=(-180, 180, -90, 90), origin='lower', **kwargs)
+        plt.imshow(grid_values.tobytes(), extent=(-180, 180, -90, 90), origin='lower', **kwargs)
         plt.colorbar(label=title)
         plt.xlabel('Longitude')
         plt.ylabel('Latitude')
@@ -320,25 +320,25 @@ class Plot:
         meshgrid = np.stack((lat_grid, lon_grid), axis=-1)
 
         # Create initial plot with first frame
-        datagrid_values = griddata(
+        datagrid_values = np.array(griddata(
                         points=coordinates[:,:2],  # Points at which we have data
                         values=variable_history[0],  # Data values
                         xi=meshgrid,  # Points to interpolate at
                         method='cubic'  # 'cubic', 'linear', or 'nearest'
-                    )
-        img = ax.imshow(datagrid_values, extent=(-180, 180, -90, 90), origin='lower', cmap='plasma',
+                    ))
+        img = ax.imshow(datagrid_values.tobytes(), extent=(-180, 180, -90, 90), origin='lower', cmap='plasma',
                         vmin=vmin, vmax=vmax)
         fig.colorbar(img, label=title)
 
         # Define the animation update function
         def update(frame):
-            grid_values = griddata(
+            grid_values = np.array(griddata(
                 points=coordinates[:,:2],  # Points at which we have data
                 values=variable_history[frame],  # Data values
                 xi=meshgrid,  # Points to interpolate at
                 method='cubic'  # 'cubic', 'linear', or 'nearest'
-            )
-            img.set_array(grid_values)
+            ))
+            img.set_array(grid_values.tobytes())
             ax.set_title(f"Frame {frame}")
             return [img]
 
@@ -359,14 +359,14 @@ class Plot:
         fig, (ax0, ax1, ax2) = plt.subplots(1, 3, sharey='row')
         fig.set_figwidth(12.0)
 
-        ax0.plot(atmosphere.air_data.temperature[:,vertex]-273.15, atmosphere.air_data.altitudes / 1000)
+        ax0.plot(atmosphere.air_data.temperature[:,vertex]-273.15, atmosphere.air_data.altitudes[:,vertex] / 1000)
         ax0.set_ylabel("Altitude (km)")
         ax0.set_xlabel("Temperature (ºC)")
 
-        ax1.plot(atmosphere.air_data.pressure[:,vertex], atmosphere.air_data.altitudes / 1000)
+        ax1.plot(atmosphere.air_data.pressure[:,vertex], atmosphere.air_data.altitudes[:,vertex] / 1000)
         ax1.set_xlabel("Pressure (Pa)")
 
-        ax2.plot(atmosphere.air_data.density[:,vertex], atmosphere.air_data.altitudes / 1000)
+        ax2.plot(atmosphere.air_data.density[:,vertex], atmosphere.air_data.altitudes[:,vertex] / 1000)
         ax2.set_xlabel("Density (kg/m³)")
 
         plt.tight_layout()
@@ -404,26 +404,26 @@ class Plot:
         meshgrid = np.stack((lat_grid, lon_grid), axis=-1)
 
         # Interpolate pressure values to grid for background
-        pressure_grid = griddata(
+        pressure_grid = np.array(griddata(
             points=coordinates[:, :2],
             values=pressure,
             xi=meshgrid,
             method='cubic'
-        )
+        ))
 
         # Interpolate gradients to the grid
-        gradient_lon = griddata(
+        gradient_lon = np.array(griddata(
             points=coordinates[::4, :2],
             values=gradients[::4, 0],
             xi=meshgrid,
             method='cubic'
-        )
-        gradient_lat = griddata(
+        ))
+        gradient_lat = np.array(griddata(
             points=coordinates[::4, :2],
             values=gradients[::4, 1],
             xi=meshgrid,
             method='cubic'
-        )
+        ))
 
         fig, ax = plt.subplots(figsize=(12, 6))
         ax.set_title(title)
@@ -431,7 +431,7 @@ class Plot:
         ax.set_ylabel("Latitude")
 
         # Plot the pressure as the background
-        img = ax.imshow(pressure_grid, extent=(-180, 180, -90, 90), origin='lower', cmap=cmap)
+        img = ax.imshow(pressure_grid.tobytes(), extent=(-180, 180, -90, 90), origin='lower', cmap=cmap)
         plt.colorbar(img, ax=ax, label='Pressure')
 
         # Plot the gradients as quivers
@@ -456,18 +456,18 @@ class Plot:
         meshgrid = np.stack((lat_grid, lon_grid), axis=-1)
 
         # Interpolate velocity components to the grid
-        velocity_u = griddata(
+        velocity_u = np.array(griddata(
             points=coordinates[:, :2],
             values=velocity[:, 0],  # Zonal velocity
             xi=meshgrid,
             method='cubic'
-        )
-        velocity_v = griddata(
+        ))
+        velocity_v = np.array(griddata(
             points=coordinates[:, :2],
             values=velocity[:, 1],  # Meridional velocity
             xi=meshgrid,
             method='cubic'
-        )
+        ))
 
         # Calculate the speed for the background
         speed = np.sqrt(velocity_u ** 2 + velocity_v ** 2)

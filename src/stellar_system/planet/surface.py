@@ -1,3 +1,4 @@
+import cupy as cp
 import noise
 import numpy as np
 from scipy import constants
@@ -28,12 +29,12 @@ class Surface(GeodesicGrid):
                                                          self.adjacency_matrix.tocsr())
         self.zonal_derivative, self.meridional_derivative, self.vertical_derivative = self.vector_operators.partial_derivative_operators
 
-        self.coordinates = np.apply_along_axis(cartesian_to_spherical, -1, self.vertices)
+        self.coordinates = cp.apply_along_axis(cartesian_to_spherical, -1, self.vertices)
 
         self.normals = self.calculate_normals()
 
 
-        self.irradiance = np.zeros(shape=len(self.vertices), dtype=np.float64)
+        self.irradiance = cp.zeros(shape=len(self.vertices), dtype='float64')
         self.emissivity = 0.95
 
         self.material = Materials.load(kwargs['material_name'])
@@ -44,15 +45,15 @@ class Surface(GeodesicGrid):
 
         self.n_layers = 10 if 'n_layers' not in kwargs else kwargs['n_layers']
         self.max_depth = 4.0 if 'max_depth' not in kwargs else kwargs['max_depth']
-        self.layer_depths = self.max_depth * (np.logspace(0, 1, self.n_layers, base=2) - 1)
+        self.layer_depths = self.max_depth * (cp.logspace(0, 1, self.n_layers, base=2) - 1)
         self.vertex_area = 4 * np.pi * self.radius ** 2 / len(self.vertices)
         self.blackbody_temperature = kwargs['blackbody_temperature']
-        self.subsurface_temperature = np.full((len(self.vertices), self.n_layers), self.blackbody_temperature, dtype=np.float64)
+        self.subsurface_temperature = cp.full((len(self.vertices), self.n_layers), self.blackbody_temperature, dtype='float64')
 
         self.f_GH = 0.0  # Greenhouse factor; will be updated by `Planet` if the planet has an atmosphere.
 
 
-    def elevate_terrain(self):
+    def elevate_terrain(self) -> cp.ndarray:
         # Generate elevation using Perlin noise for each vertex
         try:
             elevations = []
@@ -62,9 +63,9 @@ class Surface(GeodesicGrid):
                                           vertex[2] * self.noise_scale + self.noise_offset[2],
                                           octaves=self.noise_octaves)
                 elevations.append(elevation)
-            elevations -= (np.amin(elevations) + np.amax(elevations)) / 2
-            elevations *= 0.5 / np.amax(elevations)
-            relative_distances = 1 + self.noise_amplitude * (np.array(elevations) + self.noise_bias/2)
+            elevations -= (cp.amin(elevations) + cp.amax(elevations)) / 2
+            elevations *= 0.5 / cp.amax(elevations)
+            relative_distances = 1 + self.noise_amplitude * (cp.array(elevations) + self.noise_bias/2)
             return relative_distances
 
         except Exception as err:
@@ -74,13 +75,13 @@ class Surface(GeodesicGrid):
     def calculate_normals(self):
         try:
             # Calculate normal vectors for each vertex
-            normals = np.zeros(shape=self.vertices.shape, dtype=np.float64)
+            normals = cp.zeros(shape=self.vertices.shape, dtype='float64')
 
             for face in self.faces:
                 v1, v2, v3 = [self.vertices[vert_idx] for vert_idx in face]
 
-                face_normal = np.cross(v2 - v1, v3 - v1)
-                normal_magnitude = np.linalg.norm(face_normal)
+                face_normal = cp.cross(v2 - v1, v3 - v1)
+                normal_magnitude = cp.linalg.norm(face_normal)
                 if normal_magnitude == 0:
                     raise ZeroDivisionError(f"Division by zero identified while normalizing normal vectors; "
                                             f"the face formed by vertices {face[0]}, {face[1]}, and {face[2]} (located "
@@ -91,7 +92,7 @@ class Surface(GeodesicGrid):
                     # The normal vector at a vertex is the normalized sum of the normals of neighboring faces
                     normals[vert_idx] += face_normal
 
-            normal_magnitudes = np.linalg.norm(normals, axis=-1)
+            normal_magnitudes = cp.linalg.norm(normals, axis=-1)
             normals /= normal_magnitudes[..., None]
 
             is_water = self.elevation<=0.0
@@ -103,9 +104,9 @@ class Surface(GeodesicGrid):
             raise Exception(f"Error calculating normal vectors at vertices on the surface:\n{err}")
 
 
-    def update_irradiance(self, sunlight: np.ndarray):
-        self.irradiance = -np.einsum('j, ij -> i', sunlight, self.normals)
-        self.irradiance = np.fmax(self.irradiance, 0.0)
+    def update_irradiance(self, sunlight: cp.ndarray):
+        self.irradiance = -cp.einsum('j, ij -> i', sunlight, self.normals)
+        self.irradiance = cp.fmax(self.irradiance, 0.0)
 
     def surface_heat_flux(self):
         # W/m²
@@ -119,7 +120,7 @@ class Surface(GeodesicGrid):
         c = self.specific_heat_capacity  # (J/kg·K)
         alpha = k / (rho * c)  # Thermal diffusivity (m²/s)
 
-        dz = np.diff(self.layer_depths, prepend=0)  # Layer thicknesses
+        dz = cp.diff(self.layer_depths, prepend=0)  # Layer thicknesses
 
         # Top layer (surface interaction)
         self.subsurface_temperature[:, 0] += delta_t * self.surface_heat_flux() / (rho * c * dz[1] )#* self.vertex_area)

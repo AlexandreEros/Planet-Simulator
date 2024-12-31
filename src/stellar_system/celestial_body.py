@@ -1,5 +1,6 @@
+import cupy as cp
 import numpy as np
-from scipy.spatial.transform import Rotation
+from cupyx.scipy.spatial.transform import Rotation
 
 class CelestialBody:
     def __init__(self, name: str, body_type: str, mass: float, color: str,
@@ -18,8 +19,8 @@ class CelestialBody:
         self.inclination = 0.0 if 'inclination_deg' not in self.orbital_data else np.radians(self.orbital_data['inclination_deg'])
         self.lon_ascending_node = 0.0 if 'lon_ascending_node_deg' not in self.orbital_data else np.radians(self.orbital_data['lon_ascending_node_deg'])
         if 'position' in self.orbital_data and 'velocity' in self.orbital_data:
-            self.position = np.array(self.orbital_data['position'], dtype=np.float64)
-            self.velocity = np.array(self.orbital_data['velocity'], dtype=np.float64)
+            self.position = cp.array(self.orbital_data['position'], dtype='float64')
+            self.velocity = cp.array(self.orbital_data['velocity'], dtype='float64')
         else:
             self.position, self.velocity = self.get_start_vectors(self.orbital_period,
                     self.true_anomaly, self.eccentricity, self.argument_of_perihelion, self.inclination,
@@ -27,10 +28,10 @@ class CelestialBody:
 
             self.semi_major_axis = self.get_semi_major_axis(self.orbital_period, parent_mass)
 
-        ascending_node_vec = np.array([np.cos(self.lon_ascending_node), np.sin(self.lon_ascending_node), 0.0])
+        ascending_node_vec = cp.array([cp.cos(self.lon_ascending_node), cp.sin(self.lon_ascending_node), 0.0])
         self.inclination_matrix = Rotation.from_rotvec(ascending_node_vec * self.inclination).as_matrix()
 
-        self.net_force = np.zeros((3,), dtype = np.float64)
+        self.net_force = cp.zeros((3,), dtype = np.float64)
 
 
     def apply_force(self, force):
@@ -44,7 +45,7 @@ class CelestialBody:
 
     @property
     def current_angular_momentum(self):
-        return np.cross(self.position, self.mass * self.velocity)
+        return cp.cross(self.position, self.mass * self.velocity)
 
 
     @staticmethod
@@ -76,7 +77,7 @@ class CelestialBody:
     def get_start_vectors(orbital_period: float, true_anomaly: float, eccentricity: float, argument_of_perihelion: float,
                           inclination: float, lon_ascending_node: float, parent_mass: float,
                           parent_position = np.zeros(3), parent_velocity = np.zeros(3), G = 6.67430e-11)\
-            -> (np.ndarray, np.ndarray):
+            -> (cp.ndarray, cp.ndarray):
         """
         Given orbital parameters, return the celestial body's initial position and velocity
 
@@ -101,10 +102,10 @@ class CelestialBody:
         transverse_velocity_mag = specific_angular_momentum / distance
         # speed = float(np.sqrt(G*parent_mass * (2*mean_distance - distance) / (distance*mean_distance)))
 
-        radial_vec = np.array([np.cos(true_anomaly), np.sin(true_anomaly), 0.], dtype=np.float64)
-        transverse_vec = np.array([-np.sin(true_anomaly), np.cos(true_anomaly), 0.], dtype=np.float64)
+        radial_vec = cp.array([np.cos(true_anomaly), np.sin(true_anomaly), 0.], dtype=np.float64)
+        transverse_vec = cp.array([-np.sin(true_anomaly), np.cos(true_anomaly), 0.], dtype=np.float64)
 
-        z_axis = np.array([0, 0, 1], dtype = np.float64)
+        z_axis = cp.array([0, 0, 1], dtype = np.float64)
 
         position = distance * radial_vec
         velocity = radial_velocity_mag * radial_vec + transverse_velocity_mag * transverse_vec
