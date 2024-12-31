@@ -21,7 +21,7 @@ def run():
     if len(sys.argv) > 3:
         duration_sec = float(sys.argv[3])
     if len(sys.argv) > 4:
-        timestep_sec = int(sys.argv[4])
+        timestep_sec = float(sys.argv[4])
         time_between_snapshots_sec = timestep_sec
     if len(sys.argv) > 5:
         time_between_snapshots_sec = float(sys.argv[5])

@@ -28,32 +28,47 @@ class Plot:
         elif plot_type=='pressure':
             planet, layer_idx = args
             coordinates = planet.surface.coordinates
+            latitude = coordinates[...,1]
+            longitude = coordinates[...,0]
+            coordinates = np.stack([latitude, longitude], axis=-1)
             pressure = planet.atmosphere.air_data.pressure[layer_idx]
             args = (coordinates, pressure)
-            altitude = planet.atmosphere.air_data.altitudes[layer_idx]
-            kwargs['title'] = f'Air pressure (Pa) at {altitude/1000:.2f} km high'
+            min_altitude = np.amin(planet.atmosphere.air_data.altitudes[layer_idx])
+            max_altitude = np.amax(planet.atmosphere.air_data.altitudes[layer_idx])
+            kwargs['title'] = f'Air pressure (Pa) between {min_altitude/1000:.2f} and {max_altitude/1000:.2f} km high'
             self.func = self.worldmap
         elif plot_type=='density':
             planet, layer_idx = args
             coordinates = planet.surface.coordinates
+            latitude = coordinates[...,1]
+            longitude = coordinates[...,0]
+            coordinates = np.stack([latitude, longitude], axis=-1)
             density = planet.atmosphere.air_data.density[layer_idx]
             args = (coordinates, density)
-            altitude = planet.atmosphere.air_data.altitudes[layer_idx]
-            kwargs['title'] = f'Air density (kg/m³) at {altitude/1000:.2f} km high'
+            min_altitude = np.amin(planet.atmosphere.air_data.altitudes[layer_idx])
+            max_altitude = np.amax(planet.atmosphere.air_data.altitudes[layer_idx])
+            kwargs['title'] = f'Air density (kg/m³) between {min_altitude / 1000:.2f} and {max_altitude / 1000:.2f} km high'
             self.func = self.worldmap
         elif plot_type=='air_temperature':
             planet, layer_idx = args
             coordinates = planet.surface.coordinates
+            latitude = coordinates[...,1]
+            longitude = coordinates[...,0]
+            coordinates = np.stack([latitude, longitude], axis=-1)
             temperature = planet.atmosphere.air_data.temperature[layer_idx] - 273.15
             args = (coordinates, temperature)
-            altitude = planet.atmosphere.air_data.altitudes[layer_idx]
-            kwargs['title'] = f'Temperature (ºC) at {altitude/1000:.2f} km high'
+            min_altitude = np.amin(planet.atmosphere.air_data.altitudes[layer_idx])
+            max_altitude = np.amax(planet.atmosphere.air_data.altitudes[layer_idx])
+            kwargs['title'] = f'Temperature (ºC) between {min_altitude / 1000:.2f} and {max_altitude / 1000:.2f} km high'
             kwargs['cmap'] = 'plasma'
             self.func = self.worldmap
 
         elif plot_type=='pressure_gradient':
             planet, layer_idx = args
             coordinates = planet.surface.coordinates
+            latitude = coordinates[...,1]
+            longitude = coordinates[...,0]
+            coordinates = np.stack([latitude, longitude], axis=-1)
             pressure = planet.atmosphere.air_data.pressure[layer_idx]
             pressure_gradient = planet.atmosphere.air_flow.pressure_gradient[layer_idx]
             args = (coordinates, pressure, pressure_gradient)
@@ -64,22 +79,33 @@ class Plot:
         elif plot_type=='elevation':
             self.func = self.worldmap
             surf = args[0]
+            coordinates = surf.coordinates
+            latitude = coordinates[...,1]
+            longitude = coordinates[...,0]
+            coordinates = np.stack([latitude, longitude], axis=-1)
             kwargs['title'] = 'Elevation (m)'
             kwargs['cmap'] = 'terrain' #surf.cmap
             kwargs['resolution'] = int(np.ceil(0.03 * len(surf.vertices)))
-            args = (surf.coordinates, surf.elevation)
+            args = (coordinates, surf.elevation)
         elif plot_type=='albedo':
             self.func = self.worldmap
             surf = args[0]
+            coordinates = surf.coordinates
+            latitude = coordinates[...,1]
+            longitude = coordinates[...,0]
+            coordinates = np.stack([latitude, longitude], axis=-1)
             kwargs['title'] = 'Albedo'
             kwargs['resolution'] = int(np.ceil(0.03 * len(surf.vertices)))
             kwargs['vmax'] = 1
             kwargs['vmin']= 0
-            args = (surf.coordinates, surf.albedo)
+            args = (coordinates, surf.albedo)
         elif plot_type=='heat_capacity':
             self.func = self.worldmap
             surf = args[0]
             coordinates = surf.coordinates
+            latitude = coordinates[...,1]
+            longitude = coordinates[...,0]
+            coordinates = np.stack([latitude, longitude], axis=-1)
             kwargs['title'] = 'Heat capacity (J/m²·K)'
             kwargs['resolution'] = int(np.ceil(0.03 * max(coordinates.shape)))
             kwargs['vmax'] = np.amax(surf.heat_capacity)
@@ -89,8 +115,12 @@ class Plot:
         elif plot_type=='irradiance':
             self.func = self.animate
             sim = args[0]
+            coordinates = sim.planet.surface.coordinates
+            latitude = coordinates[...,1]
+            longitude = coordinates[...,0]
+            coordinates = np.stack([latitude, longitude], axis=-1)
             irradiance = sim.irradiance_history
-            args = (sim.planet.surface.coordinates, irradiance,)
+            args = (coordinates, irradiance,)
             kwargs['title'] = 'Irradiance (W/m²)'
             kwargs['vmax'] = np.amax(irradiance)
             kwargs['vmin'] = np.amin(irradiance)
@@ -100,6 +130,9 @@ class Plot:
             temperature = sim.temperature_history - 273.15
             # temperature = temperature[len(temperature)//2:]
             coordinates = sim.planet.surface.coordinates
+            latitude = coordinates[...,1]
+            longitude = coordinates[...,0]
+            coordinates = np.stack([latitude, longitude], axis=-1)
             is_equatorial = np.abs(coordinates[...,0]) < 10
             args = (coordinates, temperature)
             kwargs['title'] = 'Temperature (ºC)'
@@ -109,7 +142,11 @@ class Plot:
             self.func = self.animate
             sim = args[0]
             heat = sim.heat_history
-            args = (sim.planet.surface.coordinates, heat,)
+            coordinates = sim.planet.surface.coordinates
+            latitude = coordinates[...,1]
+            longitude = coordinates[...,0]
+            coordinates = np.stack([latitude, longitude], axis=-1)
+            args = (coordinates, heat,)
             kwargs['title'] = 'Heat Flux (W/m²)'
             kwargs['vmax'] = np.amax(heat)
             kwargs['vmin'] = np.amin(heat)
@@ -118,10 +155,14 @@ class Plot:
         elif plot_type=='velocity':
             planet, layer_idx = args
             coordinates = planet.surface.coordinates
+            latitude = coordinates[...,1]
+            longitude = coordinates[...,0]
+            coordinates = np.stack([latitude, longitude], axis=-1)
             velocity = planet.atmosphere.air_flow.velocity[layer_idx]
             args = (coordinates, velocity)
-            altitude = planet.atmosphere.air_data.altitudes[layer_idx]
-            kwargs['title'] = f'Streamlines of air flow at {altitude/1000:.2f} km high'
+            min_altitude = np.amin(planet.atmosphere.air_data.altitudes[layer_idx])
+            max_altitude = np.amax(planet.atmosphere.air_data.altitudes[layer_idx])
+            kwargs['title'] = f'Streamlines of air flow between {min_altitude/1000:.2f} and {max_altitude/1000:.2f} km high'
             self.func = self.stream
 
         self.func(*args, **kwargs)

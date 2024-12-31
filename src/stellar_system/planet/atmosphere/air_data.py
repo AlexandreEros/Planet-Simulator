@@ -26,26 +26,24 @@ class AirData:
         self.lapse_rate = -self.g0 / self.cp  # Adiabatic dry lapse rate as a function of geopotential altitude
         self.T0 = np.mean(self.surface.temperature) # Blackbody temperature of the planet, and initial temperature of the surface
 
-        # pressure(h) = exp(-h / scale_height_0) * self.surface_pressure
         scale_height_0 = self.R_specific * self.T0 / self.g0
         self.top_geopotential = -np.log(1e-2) * scale_height_0  # Height where pressure drops to 1% of its value at the surface
         self.bottom = np.amin(self.surface.elevation)
-        self.altitudes = self.bottom + (self.top_geopotential-self.bottom) * np.linspace(0,1, num=self.n_layers+1)[1:] ** 2
+        self.altitudes = self.surface.elevation + (self.top_geopotential-surface.elevation) * np.linspace(
+            np.zeros(self.surface.elevation.shape),
+            np.ones(self.surface.elevation.shape),
+            num=self.n_layers
+        ) ** 2
         self.g = self.grav(self.altitudes)  # Gravity at all altitudes
 
         self.coordinates = np.zeros((self.n_layers, self.n_columns, 3))
-        for i in range(self.n_layers):
-            self.coordinates[i] = self.surface.coordinates  # longitude and latitude
-            self.coordinates[i, :, 2] = self.altitudes[i]  # altitude
+        for layer_idx in range(self.n_layers):
+            self.coordinates[layer_idx] = self.surface.coordinates  # longitude and latitude
+            self.coordinates[layer_idx, :, 2] = self.altitudes[layer_idx]  # altitude
         
-        layer_temperatures = self.T0 + self.lapse_rate * self.altitudes
-        self.temperature = np.full((self.n_layers, self.n_columns), layer_temperatures[:, None])
+        self.temperature = self.T0 + self.lapse_rate * self.altitudes
         self.pressure = self.get_pressure(self.temperature)
         self.density = self.get_density(self.temperature, self.pressure)
-
-        self.is_underground = self.altitudes[:, None] <= self.surface.elevation
-        self.lowest_layer_above_surface = np.argmin(self.is_underground, axis=0)
-
 
 
     def get_pressure(self, temperature) -> np.ndarray:
@@ -54,16 +52,15 @@ class AirData:
         
         pressure[0, :] = self.surface_pressure
 
-        scale_height = self.R_specific * temperature / self.g[:, None]
+        scale_height = self.R_specific * temperature / self.g
         
         # Calculate pressure for each layer using hydrostatic equilibrium
         for layer_idx in range(1, self.n_layers):
             delta_h = self.altitudes[layer_idx] - self.altitudes[layer_idx - 1]
             is_vac = scale_height[layer_idx] < 1e-15
-        
-            pressure[layer_idx][is_vac] = 0.0
+            pressure[layer_idx][is_vac] = pressure[layer_idx - 1, is_vac]
             pressure[layer_idx][~is_vac] = pressure[layer_idx - 1][~is_vac] * np.exp(
-                -delta_h / scale_height[layer_idx][~is_vac]
+                -delta_h[~is_vac] / scale_height[layer_idx][~is_vac]
             )
         
         return pressure
@@ -87,10 +84,5 @@ class AirData:
 
 
     def update(self):
-        self.temperature[self.is_underground] = self.surface.blackbody_temperature
-
         self.pressure = self.get_pressure(self.temperature)
         self.density = self.get_density(self.temperature, self.pressure)
-
-        self.pressure[self.is_underground] = self.surface_pressure
-        self.density[self.is_underground] = 1.0

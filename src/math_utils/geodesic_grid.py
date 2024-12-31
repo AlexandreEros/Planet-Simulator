@@ -1,8 +1,7 @@
 import numpy as np
 from scipy import sparse
 
-from .vector_utils import normalize, cartesian_to_spherical, rotation_mat_x
-from .vector_operators_spherical import VectorOperatorsSpherical
+from .vector_utils import normalize, cartesian_to_spherical, rotation_mat_x, rotation_mat_y
 
 
 class GeodesicGrid:
@@ -38,8 +37,8 @@ class GeodesicGrid:
             self.n_faces = len(self.faces)
 
             coordinates = np.apply_along_axis(cartesian_to_spherical, -1, self.vertices)
-            self.latitude = coordinates[:, 0]
-            self.longitude = coordinates[:, 1]
+            self.longitude = coordinates[:, 0]
+            self.latitude = coordinates[:, 1]
 
             self.adjacency_matrix = self.build_adjacency_matrix()
             self.dx, self.dy, self.dz = self.build_dxdydz_matrices()
@@ -91,7 +90,8 @@ class GeodesicGrid:
         vertices = np.array(vertices, dtype=np.float64)
         faces = np.array(faces, dtype=np.int32)
 
-        vertices = rotation_mat_x(1e-3).dot(vertices.T).T  # Prevent points from being exactly at the poles
+        vertices = rotation_mat_x(1e-1).dot(vertices.T).T  # Prevent points from being exactly at the poles
+        vertices = rotation_mat_y(1e-1).dot(vertices.T).T
         return vertices, faces
 
 
