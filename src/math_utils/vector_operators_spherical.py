@@ -126,11 +126,15 @@ class VectorOperatorsSpherical:
         :param values: NumPy array of shape (N,) containing scalar values at vertices.
         :return grad: NumPy array of shape (N,2) representing (∂f/∂lambda, ∂f/∂phi) for each vertex.
         """
+        shape = values.shape
+        values = values.flatten()
+
         # Perform matrix-vector multiplication to compute the gradients
         grad_lambda = self.zonal_operator.dot(values)  # ∂f/∂lambda for each vertex
         grad_phi = self.meridional_operator.dot(values)  # ∂f/∂phi for each vertex
         grad_h = self.vertical_operator.dot(values)  # ∂f/∂h for each vertex
-        return np.stack([grad_lambda, grad_phi, grad_h], axis=-1)
+        gradient = np.stack([grad_lambda, grad_phi, grad_h], axis=-1)
+        return gradient.reshape(shape + (3,))
 
 
 
@@ -139,10 +143,12 @@ class VectorOperatorsSpherical:
         Computes the divergence of a vector field defined on a spherical surface.
     
         Parameters:
-        - vector_field: NumPy array of shape (N, 2) representing the vector field (v_lambda, v_phi) at each vertex.
+        - vector_field: NumPy array of shape (..., 3) representing the vector field (v_lambda, v_phi, v_h) at each vertex.
         Returns:
-        - divergence: NumPy array of shape (N,) representing the divergence of the vector field at each vertex.
+        - divergence: Flat NumPy array representing the divergence of the vector field at each vertex.
         """
+        shape = vector_field.shape
+        vector_field = vector_field.reshape((-1, 3))
     
         # Split the vector field into components
         v_lambda = vector_field[:, 0]  # ∂f/∂lambda
@@ -154,7 +160,7 @@ class VectorOperatorsSpherical:
         div_phi = self.meridional_operator.dot(v_phi)  # Partial derivative of v_phi with respect to phi
         div_h = self.vertical_operator.dot(v_h)  # Partial derivative of v_h with respect to h
         divergence = div_lambda + div_phi + div_h
-        return divergence
+        return divergence.reshape(shape[:-1])
 
 
 
@@ -162,10 +168,12 @@ class VectorOperatorsSpherical:
         """
         Computes the curl of a vector field defined on a spherical surface.
         Parameters:
-        - vector_field: NumPy array of shape (N, 3) representing the vector field (v_lambda, v_phi, v_h) at each vertex.
+        - vector_field: NumPy array of shape (..., 3) representing the vector field (v_lambda, v_phi, v_h) at each vertex.
         Returns:
-        - curl: NumPy array of shape (N,3) representing the curl of the vector field at each vertex.
+        - curl: NumPy array of shape (...,3) representing the curl of the vector field at each vertex.
         """
+        shape = vector_field.shape
+        vector_field = vector_field.reshape((-1,3))
 
         # Split the vector field into components
         v_lambda = vector_field[:, 0]  # Zonal component
@@ -179,7 +187,7 @@ class VectorOperatorsSpherical:
 
         # Combine curl components
         curl = np.stack([curl_lambda, curl_phi, curl_h], axis=-1)
-        return curl
+        return curl.reshape(shape)
 
 
 
@@ -187,38 +195,35 @@ class VectorOperatorsSpherical:
         """
         Computes the gradient of a vector field defined on a spherical surface.
 
-        :param vector_field: NumPy array of shape (N, 3) containing the vector field components
+        :param vector_field: NumPy array of shape (..., 3) containing the vector field components
                              (v_lambda, v_phi, v_h) at each vertex.
         :return: NumPy array of shape (N, 3, 3) representing the gradient tensor with
                  ∂v/∂lambda, ∂v/∂phi, and ∂v/∂h for each vertex.
         """
+        shape = vector_field.shape
+        vector_field = vector_field.reshape((-1, 3))
+        N = vector_field.shape[0]
+        gradient_tensor = np.zeros((N, 3, 3))
+
         # Split the vector field into zonal, meridional, and vertical components
         v_lambda = vector_field[:, 0]  # Zonal component of the vector field
         v_phi = vector_field[:, 1]  # Meridional component of the vector field
         v_h = vector_field[:, 2]  # Vertical component of the vector field
 
         # Compute partial derivatives
-        grad_v_lambda_lambda = self.zonal_operator.dot(v_lambda)  # ∂v_lambda/∂lambda
-        grad_v_lambda_phi = self.meridional_operator.dot(v_lambda)  # ∂v_lambda/∂phi
-        grad_v_lambda_h = self.vertical_operator.dot(v_lambda)  # ∂v_lambda/∂h
+        gradient_tensor[:,0,0] = self.zonal_operator.dot(v_lambda)  # ∂v_lambda/∂lambda
+        gradient_tensor[:,0,1] = self.meridional_operator.dot(v_lambda)  # ∂v_lambda/∂phi
+        gradient_tensor[:,0,2] = self.vertical_operator.dot(v_lambda)  # ∂v_lambda/∂h
 
-        grad_v_phi_lambda = self.zonal_operator.dot(v_phi)  # ∂v_phi/∂lambda
-        grad_v_phi_phi = self.meridional_operator.dot(v_phi)  # ∂v_phi/∂phi
-        grad_v_phi_h = self.vertical_operator.dot(v_phi)  # ∂v_phi/∂h
+        gradient_tensor[:,1,0] = self.zonal_operator.dot(v_phi)  # ∂v_phi/∂lambda
+        gradient_tensor[:,1,1] = self.meridional_operator.dot(v_phi)  # ∂v_phi/∂phi
+        gradient_tensor[:,1,2] = self.vertical_operator.dot(v_phi)  # ∂v_phi/∂h
 
-        grad_v_h_lambda = self.zonal_operator.dot(v_h)  # ∂v_h/∂lambda
-        grad_v_h_phi = self.meridional_operator.dot(v_h)  # ∂v_h/∂phi
-        grad_v_h_h = self.vertical_operator.dot(v_h)  # ∂v_h/∂h
+        gradient_tensor[:,2,0] = self.zonal_operator.dot(v_h)  # ∂v_h/∂lambda
+        gradient_tensor[:,2,1] = self.meridional_operator.dot(v_h)  # ∂v_h/∂phi
+        gradient_tensor[:,2,2] = self.vertical_operator.dot(v_h)  # ∂v_h/∂h
 
-        # Combine results into gradient tensor with shape (N, 3, 3)
-        gradient_tensor = np.stack(
-            [[grad_v_lambda_lambda, grad_v_lambda_phi, grad_v_lambda_h],
-             [grad_v_phi_lambda, grad_v_phi_phi, grad_v_phi_h],
-             [grad_v_h_lambda, grad_v_h_phi, grad_v_h_h]],
-            axis=-1
-        ).transpose((1, 2, 0))
-
-        return gradient_tensor
+        return gradient_tensor.reshape(shape + (3,))
 
 
 
@@ -242,4 +247,8 @@ class VectorOperatorsSpherical:
         return L
 
     def calculate_laplacian(self, values: np.ndarray) -> np.ndarray:
-        return self.laplacian_operator.dot(values)
+        shape = values.shape
+        N = self.laplacian_operator.shape[0]
+        values = values.reshape((N,-1))
+        laplacian = self.laplacian_operator.dot(values)
+        return laplacian.reshape(shape)

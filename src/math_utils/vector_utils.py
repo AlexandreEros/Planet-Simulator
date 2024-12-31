@@ -59,7 +59,7 @@ def cartesian_to_spherical(vertex: np.ndarray):
     r = np.linalg.norm(vertex)
     longitude = np.degrees(np.arctan2(y, x))
     latitude = np.degrees(np.arcsin(z / r))
-    return latitude, longitude, r
+    return longitude, latitude, r
 
 
 def spherical_to_cartesian(coordinates: np.ndarray):
