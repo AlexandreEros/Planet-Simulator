@@ -1,5 +1,6 @@
 import numpy as np
 from scipy import constants
+from scipy.interpolate import interp1d
 
 from src.stellar_system.planet.surface import Surface
 
@@ -35,35 +36,60 @@ class AirData:
             num=self.n_layers
         ) ** 2
         self.g = self.grav(self.altitudes)  # Gravity at all altitudes
+        self.all_altitudes = np.linspace(self.bottom, self.top_geopotential, num=50).reshape((-1,1))
 
         self.coordinates = np.zeros((self.n_layers, self.n_columns, 3))
         for layer_idx in range(self.n_layers):
             self.coordinates[layer_idx] = self.surface.coordinates  # longitude and latitude
             self.coordinates[layer_idx, :, 2] = self.altitudes[layer_idx]  # altitude
+
+        self.all_temperatures = self.T0 + self.lapse_rate * self.all_altitudes
+        self.all_pressures = self.get_all_pressures(self.all_altitudes)
+        self.all_densities = self.get_density(self.all_temperatures, self.all_pressures)
         
         self.temperature = self.T0 + self.lapse_rate * self.altitudes
-        self.pressure = self.get_pressure(self.temperature)
+        # self.pressure = self.get_pressure(self.temperature)
+        # Interpolate pressures from self.all_pressures to self.altitudes
+        interpolate_pressure = interp1d(
+            self.all_altitudes.flatten(),  # Flatten to ensure 1D array for interpolation
+            self.all_pressures.flatten(),
+            kind='linear',
+            fill_value="extrapolate"
+        )
+        self.pressure = np.array(interpolate_pressure(self.altitudes))
         self.density = self.get_density(self.temperature, self.pressure)
 
 
-    def get_pressure(self, temperature) -> np.ndarray:
-        shp = (self.n_layers, self.n_columns)
-        pressure = np.zeros(shp)
-        
-        pressure[0, :] = self.surface_pressure
+    def get_all_pressures(self, all_altitudes) -> np.ndarray:
+        # Initialize pressure array
+        all_pressures = np.zeros_like(all_altitudes)
+        # Pressure at the lowest point is 1.0
+        all_pressures[0] = 1.0
+        # Calculate scale height for each altitude
+        g = self.grav(all_altitudes)
+        scale_height = self.R_specific * self.all_temperatures / g
 
-        scale_height = self.R_specific * temperature / self.g
-        
-        # Calculate pressure for each layer using hydrostatic equilibrium
-        for layer_idx in range(1, self.n_layers):
-            delta_h = self.altitudes[layer_idx] - self.altitudes[layer_idx - 1]
-            is_vac = scale_height[layer_idx] < 1e-15
-            pressure[layer_idx][is_vac] = pressure[layer_idx - 1, is_vac]
-            pressure[layer_idx][~is_vac] = pressure[layer_idx - 1][~is_vac] * np.exp(
-                -delta_h[~is_vac] / scale_height[layer_idx][~is_vac]
-            )
-        
-        return pressure
+        # Calculate pressure for each altitude using hydrostatic equilibrium
+        for i in range(1, len(all_altitudes)):
+            delta_h = all_altitudes[i] - all_altitudes[i - 1]
+            is_vac = scale_height[i] < 1e-15
+            if is_vac:
+                all_pressures[i] = 0.0
+            else:
+                all_pressures[i] = all_pressures[i - 1] * np.exp(-delta_h / scale_height[i])
+
+        # Interpolate to find the relative pressure at altitude = 0
+        interp_relative_pressure = interp1d(
+            all_altitudes.flatten(),  # Flatten to ensure 1D array for interpolation
+            all_pressures.flatten(),
+            kind='linear',
+            fill_value="extrapolate"
+        )
+        relative_pressure_at_0 = interp_relative_pressure(0)
+        # Scale the pressures to match actual surface pressure
+        all_pressures *= self.surface_pressure / relative_pressure_at_0
+
+        return all_pressures
     
     def get_density(self, temperature, pressure) -> np.ndarray:
         # Compute density using the ideal gas law
@@ -81,8 +107,3 @@ class AirData:
         :return: Gravity in m/s²
         """
         return constants.G * self.planet_mass / (h + self.surface.radius) ** 2
-
-
-    def update(self):
-        self.pressure = self.get_pressure(self.temperature)
-        self.density = self.get_density(self.temperature, self.pressure)

@@ -41,6 +41,7 @@ orbital data, and surface characteristics.
       - `thermodynamics.py`: Manages heat transfer and energy exchange.
       - `adjacency_manager.py`: Builds adjacency matrices and Laplacians for spatial operations.
       - `air_data.py`: Arrays containing data on each point of the atmosphere at the current instant.
+      - `air_flow.py`: Manages atmospheric dynamics using simplifications of the Navier-Stokes equations.
 <br><br>
 - **`math_utils/`:**
   - `__init__.py`: Exposes `GeodesicGrid` and `VectorOperatorsSpherical`.
