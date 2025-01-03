@@ -32,6 +32,8 @@ class GeodesicGrid:
             self.mesh = self.geodesic_subdivide()
             self.vertices = self.radius * self.mesh[0]
             self.faces = self.mesh[1]
+            
+            self.vertices, self.faces = self.unique_vertices_and_faces(self.vertices, self.faces)
 
             self.n_vertices = len(self.vertices)
             self.n_faces = len(self.faces)
@@ -93,6 +95,13 @@ class GeodesicGrid:
         vertices = rotation_mat_x(1e-1).dot(vertices.T).T  # Prevent points from being exactly at the poles
         vertices = rotation_mat_y(1e-1).dot(vertices.T).T
         return vertices, faces
+
+
+    @staticmethod
+    def unique_vertices_and_faces(vertices: np.ndarray, faces: np.ndarray) -> tuple[np.ndarray, np.ndarray]:
+        unique_vertices, inverse_indices = np.unique(vertices, axis=0, return_inverse=True)
+        updated_faces = inverse_indices[faces]
+        return unique_vertices, np.unique(updated_faces, axis=0)
 
 
     def build_adjacency_matrix(self) -> sparse.coo_matrix:

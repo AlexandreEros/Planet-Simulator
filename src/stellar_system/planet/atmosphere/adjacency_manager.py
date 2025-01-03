@@ -23,9 +23,9 @@ class AdjacencyManager:
         self.cartesian = spherical_to_cartesian(self.coordinates)
 
         self.adjacency_matrix = self.build_layered_adjacency_matrix(horizontal_adjacency_matrix)
-        self.laplacian_matrix = VectorOperatorsSpherical.build_laplacian_matrix(self.adjacency_matrix)
-
         self.vector_operators = VectorOperatorsSpherical(self.longitude.ravel(), self.latitude.ravel(), self.radius.ravel(), self.adjacency_matrix)
+        self.laplacian_matrix = self.vector_operators.laplacian_operator
+
 
 
     def build_layered_adjacency_matrix(self, horizontal_adjacency_matrix: sparse.coo_matrix):

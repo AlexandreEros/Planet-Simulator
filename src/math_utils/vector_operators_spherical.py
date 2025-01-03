@@ -4,15 +4,18 @@ from scipy import sparse
 
 
 class VectorOperatorsSpherical:
-    def __init__(self, latitude: np.ndarray, longitude: np.ndarray, radius: np.ndarray, weights: sparse.csr_matrix):
-        self.latitude = latitude
-        self.longitude = longitude
+    def __init__(self, latitude: np.ndarray, longitude: np.ndarray, radius: np.ndarray, inv_dists: sparse.csr_matrix):
+        self.latitude = np.deg2rad(latitude)
+        self.longitude = np.deg2rad(longitude)
         self.radius = radius
-        self.weights = weights
+        self.inv_dists = inv_dists  # Sparse matrix whose non-zero elements are inverse Euclidean distances between adjacent nodes
+
+        self.cos_lat = np.cos(self.latitude)
+        self.sin_lat = np.sin(self.latitude)
 
         self.partial_derivative_operators = self.build_partial_derivative_operators()
         self.zonal_operator, self.meridional_operator, self.vertical_operator = self.partial_derivative_operators
-        self.laplacian_operator = self.build_laplacian_matrix(self.weights)
+        self.laplacian_operator = self.build_laplacian_matrix() #self.build_spherical_laplacian_operator() #
 
     def build_partial_derivative_operators(self) -> tuple[sparse.csr_matrix, sparse.csr_matrix, sparse.csr_matrix]:
         """
@@ -26,40 +29,29 @@ class VectorOperatorsSpherical:
         N = self.latitude.shape[0]
     
         # Initialize lists to construct sparse matrices
-        data_lambda = []
-        rows_lambda = []
-        cols_lambda = []
-    
-        data_phi = []
-        rows_phi = []
-        cols_phi = []
-    
-        data_h = []
-        rows_h = []
-        cols_h = []
-    
-        # Precompute cos(latitude) for scaling longitude differences
-        cos_lat = np.cos(np.deg2rad(self.latitude))  # Convert degrees to radians if necessary
-    
+        data_lambda, rows_lambda, cols_lambda = [], [], []
+        data_phi, rows_phi, cols_phi = [], [], []
+        data_h, rows_h, cols_h = [], [], []
+
         for i in range(N):
             # Extract neighbor indices for vertex i
-            neighbors_indices = self.weights[i].nonzero()[1]
+            neighbors = self.inv_dists[i].nonzero()[1]
     
             # Extract differences
-            delta_lambda = np.deg2rad(self.longitude[neighbors_indices] - self.longitude[i])  # (M,)
-            delta_phi = np.deg2rad(self.latitude[neighbors_indices] - self.latitude[i])  # (M,)
-            delta_h = self.radius[neighbors_indices] - self.radius[i]  # (M,)
+            delta_lambda = self.longitude[neighbors] - self.longitude[i]  # (M,)
+            delta_phi = self.latitude[neighbors] - self.latitude[i]  # (M,)
+            delta_h = self.radius[neighbors] - self.radius[i]  # (M,)
     
-            # Optional: Handle longitude wrapping (e.g., -180 to 180)
-            delta_lambda = (delta_lambda + np.pi) % (2 * np.pi) - np.pi  # Wrap to [-180, 180]
+            # Longitude wrapping
+            delta_lambda = (delta_lambda + np.pi) % (2 * np.pi) - np.pi  # Wrap to [−π,π]
     
             # Scale delta_lambda by cos(phi) to account for spherical geometry
-            delta_lambda_scaled = delta_lambda * cos_lat[i] * (self.radius[neighbors_indices] + self.radius[i]) / 2
-            delta_phi_scaled = delta_phi * (self.radius[neighbors_indices] + self.radius[i]) / 2
+            delta_lambda_scaled = delta_lambda * self.cos_lat[i] * (self.radius[neighbors] + self.radius[i]) / 2
+            delta_phi_scaled = delta_phi * (self.radius[neighbors] + self.radius[i]) / 2
             delta_h_scaled = delta_h  # No additional scaling for elevation
     
             # Extract weights
-            w = self.weights[i].data  # (M,)
+            w = self.inv_dists[i].data  # (M,)
     
             # Form matrix A (M x 3)
             A = np.vstack((delta_lambda_scaled, delta_phi_scaled, delta_h_scaled)).T  # Shape (M, 3)
@@ -84,7 +76,7 @@ class VectorOperatorsSpherical:
             C_h = C[2, :]  # Shape (M,)
     
             # Assign coefficients to the sparse matrices
-            for idx, j in enumerate(neighbors_indices):
+            for idx, j in enumerate(neighbors):
                 rows_lambda.append(i)
                 cols_lambda.append(j)
                 data_lambda.append(C_lambda[idx])
@@ -227,24 +219,83 @@ class VectorOperatorsSpherical:
 
 
 
-    @staticmethod
-    def build_laplacian_matrix(A: sparse.csr_matrix):
+    def build_laplacian_matrix(self):
         """
-        Given the layered adjacency matrix (which represents vertical adjacency as well), build the corresponding
-        Laplacian matrix.
-
-        :param A: NxN adjacency matrix for the entire atmosphere, where N = n_layers * surface.n_vertices.
-                  Only off-diagonal entries represent connection weights. The weights are the inverse Euclidean
-                  distances
-        :return L: The Laplacian matrix
+        Given the weighed adjacency matrix, whose weights are inverse distances, build the corresponding Laplacian matrix.
         """
         # Calculate the degree matrix as the sum of each row
-        row_sum = np.array(A.sum(axis=1))
+        row_sum = np.array(self.inv_dists.sum(axis=1))
         D = sparse.diags(row_sum.ravel(), format='csr')
 
         # Compute the Laplacian
-        L = D - A
+        L = D - self.inv_dists
         return L
+
+    def build_spherical_laplacian_operator(self) -> sparse.csr_matrix:
+        """
+        Build a discrete approximation of the 3D spherical Laplacian for a scalar field.
+
+        This assumes:
+          - self.zonal_operator (M_lambda) approximates ∂/∂λ
+          - self.meridional_operator (M_phi) approximates ∂/∂φ
+          - self.vertical_operator (M_r) approximates ∂/∂r
+          - self.radius, self.sin_lat are per-node geometry factors
+          - The node ordering is consistent across all these arrays/matrices.
+
+        Returns:
+          L_total: A sparse NxN operator that approximates
+                   (1/r^2) ∂/∂r (r^2 ∂f/∂r)
+                 + (1/(r^2 sin φ)) ∂/∂φ (sin φ ∂f/∂φ)
+                 + (1/(r^2 sin^2 φ)) ∂²f/∂λ² .
+        """
+        N = self.latitude.shape[0]
+
+        # -- Make diagonal operators for geometry factors --
+        r = self.radius  # shape (N,)
+        sinphi = self.sin_lat  # shape (N,)
+        cosphi = self.cos_lat
+
+        sinphi_safe = np.where(np.abs(sinphi) < 1e-14, 1e-14, sinphi)
+
+        diag_r = sparse.diags(r, format='csr')
+        diag_r2 = sparse.diags(r ** 2, format='csr')
+        diag_inv_r2 = sparse.diags(1.0 / (r ** 2), format='csr')
+        diag_sin_phi = sparse.diags(sinphi, format='csr')
+        diag_cos_phi = sparse.diags(cosphi, format='csr')
+        diag_inv_sin_phi = sparse.diags(1.0 / sinphi_safe, format='csr')
+        diag_inv_sin_phi2 = sparse.diags(1.0 / (sinphi_safe ** 2), format='csr')
+
+        M_lambda = diag_r @ diag_cos_phi @ self.zonal_operator
+        M_phi = diag_r @ self.meridional_operator
+        M_r = self.vertical_operator
+
+        # -- (1) Second derivative wrt λ => M_lambda^2 --
+        M_lambda2 = M_lambda @ M_lambda
+        # Combine with 1/(r^2 sin^2 phi):
+        L_lambda = diag_inv_r2 @ diag_inv_sin_phi2 @ M_lambda2
+
+        # -- (2) The φ-term => (1/(r^2 sinφ)) ∂/∂φ [ sinφ ( ∂f/∂φ ) ] --
+        # We'll define an operator that does "take ∂/∂φ of sinφ * ( ... )"
+        # We can pre-compose: M_phi_sin = M_phi @ diag_sin_phi
+        # so that M_phi_sin.dot(x) = ∂/∂φ [ sinφ * x ]
+        M_phi_sin = M_phi @ diag_sin_phi
+        # Then for "sinφ (∂f/∂φ)", we do M_phi.dot(f), multiply by diag_sin_phi,
+        # and then apply M_phi again. In operator form:
+        # ∂/∂φ [ sinφ * ∂f/∂φ ] = M_phi_sin @ (M_phi @ f).
+        # So that composition is just M_phi_sin @ M_phi.
+        M_phi_sin_phi = M_phi_sin @ M_phi
+        # Then multiply by 1/(r^2 sin φ):
+        L_phi = diag_inv_sin_phi @ diag_inv_r2 @ M_phi_sin_phi
+
+        # -- (3) The radial part => (1/r^2) ∂/∂r [ r^2 ( ∂f/∂r ) ] --
+        M_r_r2 = diag_r2 @ M_r  # operator for "r^2 ⋅ ∂/∂r"
+        M_r2 = M_r @ M_r_r2  # ∂/∂r [ r^2 ( ∂f/∂r ) ]
+        L_r = diag_inv_r2 @ M_r2  # (1/r^2) ∂/∂r [ r^2 ( ∂f/∂r ) ]
+
+        # -- Sum them up --
+        L_total = L_lambda + L_phi + L_r
+
+        return L_total
 
     def calculate_laplacian(self, values: np.ndarray) -> np.ndarray:
         shape = values.shape
