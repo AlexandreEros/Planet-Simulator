@@ -42,8 +42,8 @@ class GeodesicGrid:
             self.longitude = coordinates[:, 0]
             self.latitude = coordinates[:, 1]
 
-            self.adjacency_matrix = self.build_adjacency_matrix()
-            self.dx, self.dy, self.dz = self.build_dxdydz_matrices()
+            adjacency_matrix = self.build_adjacency_matrix()
+            self.pentagons = self.get_pentagonal_vertices(adjacency_matrix)
 
         except Exception as err:
             raise Exception(f"Error in the constructor of `GeodesicGrid`:\n{err}")
@@ -104,7 +104,7 @@ class GeodesicGrid:
         return unique_vertices, np.unique(updated_faces, axis=0)
 
 
-    def build_adjacency_matrix(self) -> sparse.coo_matrix:
+    def build_adjacency_matrix(self) -> sparse.csr_matrix:
         """
         Build an adjacency matrix for the geodesic grid using the inverse of the distance between vertices as weights.
         """
@@ -125,36 +125,11 @@ class GeodesicGrid:
                 col_indices.extend([b, a])
                 data.extend([weight, weight])
 
-        return sparse.coo_matrix((data, (row_indices, col_indices)), shape=(self.n_vertices, self.n_vertices))
+        return sparse.coo_matrix((data, (row_indices, col_indices)), shape=(self.n_vertices, self.n_vertices)).tocsr()
 
-
-    def build_dxdydz_matrices(self) -> tuple[sparse.coo_matrix, sparse.coo_matrix, sparse.coo_matrix]:
-        """
-        Build an adjacency matrix for the geodesic grid using the inverse of the distance between vertices as weights.
-        """
-
-        row_indices = []
-        col_indices = []
-        datax = []
-        datay = []
-        dataz = []
-
-        for face in self.faces:
-            # Each face is a tuple of three vertex indices
-            v1, v2, v3 = face
-
-            for (a, b) in [(v1, v2), (v2, v3), (v3, v1)]:
-                dx = self.vertices[b, 0] - self.vertices[a, 0]
-                dy = self.vertices[b, 1] - self.vertices[a, 1]
-                dz = self.vertices[b, 2] - self.vertices[a, 2]
-
-                row_indices.extend([a, b])
-                col_indices.extend([b, a])
-                datax.extend([dx, -dx])
-                datay.extend([dy, -dy])
-                dataz.extend([dz, -dz])
-
-        dx_mat = sparse.coo_matrix((datax, (row_indices, col_indices)), shape=(self.n_vertices, self.n_vertices))
-        dy_mat = sparse.coo_matrix((datay, (row_indices, col_indices)), shape=(self.n_vertices, self.n_vertices))
-        dz_mat = sparse.coo_matrix((dataz, (row_indices, col_indices)), shape=(self.n_vertices, self.n_vertices))
-        return dx_mat, dy_mat, dz_mat
+    @staticmethod
+    def get_pentagonal_vertices(adjacency_matrix):
+        n_vertices = adjacency_matrix.shape[0]
+        n_neighbors = np.array([len(adjacency_matrix[row].data) for row in range(n_vertices)])
+        pentagons = np.where(n_neighbors==5)[0]
+        return pentagons

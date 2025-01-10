@@ -48,7 +48,7 @@ class Thermodynamics:
         vertex_indices = np.arange(self.surface.n_vertices)
 
         ground_layer_thickness = self.surface.layer_depths[1] - self.surface.layer_depths[0]
-        self.surface.subsurface_temperature[:, 0] -= (
+        self.surface.subsurface_temperature[0] -= (
             self.heat_flux_from_surface / (self.surface.density * self.surface.specific_heat_capacity * ground_layer_thickness * area)
         ) * delta_t
 
@@ -63,7 +63,7 @@ class Thermodynamics:
 
         # Ensure temperatures remain physical (e.g., above 0 K)
         self.air_data.temperature = np.fmax(self.air_data.temperature, 0.0)
-        self.surface.subsurface_temperature[:, 0] = np.fmax(self.surface.subsurface_temperature[:, 0], 0.0)
+        self.surface.subsurface_temperature[0] = np.fmax(self.surface.subsurface_temperature[0], 0.0)
 
 
     def set_temperature_rate(self):

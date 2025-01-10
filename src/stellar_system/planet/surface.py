@@ -47,7 +47,7 @@ class Surface(GeodesicGrid):
         self.layer_depths = self.max_depth * (np.logspace(0, 1, self.n_layers, base=2) - 1)
         self.vertex_area = 4 * np.pi * self.radius ** 2 / len(self.vertices)
         self.blackbody_temperature = kwargs['blackbody_temperature']
-        self.subsurface_temperature = np.full((len(self.vertices), self.n_layers), self.blackbody_temperature, dtype=np.float64)
+        self.subsurface_temperature = np.full((self.n_layers, len(self.vertices)), self.blackbody_temperature, dtype=np.float64)
 
         self.f_GH = 0.0  # Greenhouse factor; will be updated by `Planet` if the planet has an atmosphere.
 
@@ -122,29 +122,29 @@ class Surface(GeodesicGrid):
         dz = np.diff(self.layer_depths, prepend=0)  # Layer thicknesses
 
         # Top layer (surface interaction)
-        self.subsurface_temperature[:, 0] += delta_t * self.surface_heat_flux() / (rho * c * dz[1] )#* self.vertex_area)
-        heat_loss_to_subsurface = alpha * (self.subsurface_temperature[:,0]-self.subsurface_temperature[:,1]) / dz[1]**2
-        self.subsurface_temperature[:, 0] -= delta_t * heat_loss_to_subsurface
+        self.subsurface_temperature[0] += delta_t * self.surface_heat_flux() / (rho * c * dz[1] )#* self.vertex_area)
+        heat_loss_to_subsurface = alpha * (self.subsurface_temperature[0]-self.subsurface_temperature[1]) / dz[1]**2
+        self.subsurface_temperature[0] -= delta_t * heat_loss_to_subsurface
 
         # Middle layers
-        self.subsurface_temperature[:, 1:-1] += delta_t * alpha * (
-                  (self.subsurface_temperature[:, :-2]
-                  -self.subsurface_temperature[:, 1:-1]) / dz[1:-1] ** 2
-                + (self.subsurface_temperature[:, 2:]
-                  -self.subsurface_temperature[:, 1:-1]) / dz[2:] ** 2
+        self.subsurface_temperature[1:-1] += delta_t * alpha * (
+                  (self.subsurface_temperature[:-2]
+                  -self.subsurface_temperature[1:-1]) / dz[1:-1, None] ** 2
+                + (self.subsurface_temperature[2:]
+                  -self.subsurface_temperature[1:-1]) / dz[2:, None] ** 2
         )
 
         # Bottom layer
         Q_geothermal = 0.02  # W/m²
         heat_flux_from_below = Q_geothermal / (rho * c * dz[-1])
-        self.subsurface_temperature[:, -1] += heat_flux_from_below
-        heat_loss_to_above = alpha * (self.subsurface_temperature[:, -2] - self.subsurface_temperature[:, -1]) / dz[-1]**2
-        self.subsurface_temperature[:, -1] -= delta_t * heat_loss_to_above
+        self.subsurface_temperature[-1] += heat_flux_from_below
+        heat_loss_to_above = alpha * (self.subsurface_temperature[-2] - self.subsurface_temperature[-1]) / dz[-1]**2
+        self.subsurface_temperature[-1] -= delta_t * heat_loss_to_above
 
 
     @property
     def temperature(self):
-        return self.subsurface_temperature[:,0]
+        return self.subsurface_temperature[0]
 
     # def update_temperature(self, delta_t: float):
     #     self.temperature += delta_t * self.surface_heat_flux() / self.heat_capacity

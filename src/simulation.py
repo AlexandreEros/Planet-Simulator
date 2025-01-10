@@ -13,28 +13,17 @@ class Simulation:
         self.planet = self.stellar_system.planet
 
         self.time = 0.0
+        self.history = None
+
 
 
     def run(self, duration, delta_t, time_between_snapshots):
         n_snapshots = int(np.ceil(duration / time_between_snapshots))
-
-        self.position_history = {body.name: np.ndarray((n_snapshots, 3), dtype=np.float64)
-                                 for body in self.stellar_system.bodies}
-        self.sunlight_vector_history = {body.name: np.ndarray((n_snapshots, 3), dtype=np.float64)
-                                 for body in self.stellar_system.bodies if body.body_type=='planet'}
-        if self.plot_type=='irradiance':
-            self.irradiance_history = np.ndarray((n_snapshots,len(self.planet.surface.irradiance)), dtype=np.float64)
-        if self.plot_type=='temperature':
-            self.temperature_history = np.ndarray((n_snapshots,len(self.planet.surface.temperature)), dtype=np.float64)
-        if self.plot_type=='heat':
-            self.heat_history = np.ndarray((n_snapshots,len(self.planet.surface.temperature)), dtype=np.float64)
-        if self.plot_type=='air_temperature':
-            self.air_temperature_history = np.ndarray((n_snapshots,)+self.planet.atmosphere.adjacency_manager.atmosphere_shape, dtype=np.float64)
-        if self.plot_type=='pressure':
-            self.pressure_history = np.ndarray((n_snapshots,)+self.planet.atmosphere.adjacency_manager.atmosphere_shape, dtype=np.float64)
-        if self.plot_type=='density':
-            self.density_history = np.ndarray((n_snapshots,)+self.planet.atmosphere.adjacency_manager.atmosphere_shape, dtype=np.float64)
-
+        if self.plot_type == 'orbits':
+            self.history = {body.name: np.zeros((n_snapshots,)+body.position.shape, dtype=np.float64)
+                            for body in self.stellar_system.bodies}
+        else:
+            self.history = np.zeros((n_snapshots,)+self.planet.variables[self.plot_type].shape, dtype=np.float64)
         time_since_snapshot = 0
         i_snapshot = 0
         while i_snapshot < n_snapshots:
@@ -42,22 +31,10 @@ class Simulation:
                 time_since_snapshot = 0
                 for body in self.stellar_system.bodies:
                     if self.plot_type=='orbits':
-                        self.position_history[body.name][i_snapshot] = body.position
-                    if body.body_type == 'planet':
-                        self.sunlight_vector_history[body.name][i_snapshot] = body.sunlight
+                        self.history[body.name][i_snapshot] = body.position
 
-                if self.plot_type=='irradiance':
-                    self.irradiance_history[i_snapshot] = self.planet.surface.irradiance
-                if self.plot_type=='temperature':
-                    self.temperature_history[i_snapshot] = self.planet.surface.temperature
-                if self.plot_type=='heat':
-                    self.heat_history[i_snapshot] = self.planet.surface.surface_heat_flux()
-                if self.plot_type=='air_temperature':
-                    self.air_temperature_history[i_snapshot] = self.planet.atmosphere.air_data.temperature
-                if self.plot_type=='pressure':
-                    self.pressure_history[i_snapshot] = self.planet.atmosphere.air_data.pressure
-                if self.plot_type=='density':
-                    self.density_history[i_snapshot] = self.planet.atmosphere.air_data.density
+                if self.plot_type != 'orbits':
+                    self.history[i_snapshot] = self.planet.variables[self.plot_type]
 
                 i_snapshot += 1
 

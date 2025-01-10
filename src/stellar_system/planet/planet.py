@@ -51,6 +51,28 @@ class Planet(CelestialBody):
 
         self.sunlight = self.position / np.linalg.norm(self.position)
 
+    @property
+    def variables(self):
+        if hasattr(self, 'atmosphere'):
+            return {
+                'irradiance': self.surface.irradiance,
+                'temperature': self.surface.temperature,
+                'subsurface_temperature': self.surface.subsurface_temperature,
+                'heat_capacity': self.surface.surface_heat_flux,
+                'air_temperature': self.atmosphere.air_data.temperature,
+                'pressure': self.atmosphere.air_data.pressure,
+                'density': self.atmosphere.air_data.density,
+                'velocity': self.atmosphere.air_flow.velocity,
+                'pressure_gradient': self.atmosphere.air_flow.pressure_gradient
+            }
+        else:
+            return {
+                'irradiance': self.surface.irradiance,
+                'temperature': self.surface.temperature,
+                'subsurface_temperature': self.surface.subsurface_temperature,
+                'heat_capacity': self.surface.surface_heat_flux
+            }
+
 
 
     def update(self, delta_t: float, star: Star):

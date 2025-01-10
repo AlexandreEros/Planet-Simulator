@@ -29,7 +29,7 @@ class AirFlow:
         self.dynamic_viscosity = self.air_data.material['dynamic_viscosity']
 
         self.omega_spherical = np.array(polar_to_cartesian_velocity(*angular_velocity_vector,
-                                                                    self.adjacency.coordinates)).reshape((self.n_layers, self.n_columns, 3,))
+                                                                    self.adjacency.cartesian)).reshape((self.n_layers, self.n_columns, 3,))
         self.cos_lat = np.cos(np.deg2rad(self.air_data.coordinates[...,1])).reshape((self.n_layers, self.n_columns))
 
         self.zonal_derivative, self.meridional_derivative, self.vertical_derivative = self.adjacency.vector_operators.partial_derivative_operators
@@ -82,7 +82,13 @@ class AirFlow:
         is_air = (self.air_data.density > 1e-9)
         self.velocity[~is_air] = 0.0
         self.velocity[is_air] += delta_t * self.net_force[is_air] / self.air_data.density[is_air][...,None]
-        self.velocity[0] = 0.0 # No slip
+        self.velocity[0] = 0.0
+
+        # # Bottom layer
+        # vel0 = polar_to_cartesian_velocity(self.velocity[0,:,0], self.velocity[0,:,1], self.velocity[0,:,2], self.surface.vertices)
+        # normal_mag = np.einsum('...i,...i -> ...', vel0, self.surface.normals)
+        # normal_component = normal_mag[...,None] * self.surface.normals
+        # self.velocity[0] -= np.where(normal_mag[...,None]>0, normal_component, 0.0)
 
         self.temperature_rate[...] = -np.einsum('...i,...i->...', self.velocity, self.temperature_gradient)
         self.density_rate[...] = -self.air_data.density * self.velocity_divergence
@@ -90,7 +96,10 @@ class AirFlow:
 
     def change_air_data(self, delta_t: float):
         self.air_data.temperature += delta_t * self.temperature_rate
+        initial_mass = np.sum(self.air_data.density)
         self.air_data.density += delta_t * self.density_rate
+        later_mass = np.sum(self.air_data.density)
+        self.air_data.density *= initial_mass / later_mass
         self.air_data.pressure[...] = self.air_data.density * self.air_data.R_specific * self.air_data.temperature
 
         # wrong_idx = np.argwhere((self.air_data.temperature.ravel() > 1e3) | (self.air_data.temperature.ravel() < 0.0))

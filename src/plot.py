@@ -1,6 +1,8 @@
 # matplotlib.use('Agg')
+import matplotlib.patches
 import matplotlib.pyplot as plt
 import matplotlib.animation as animation
+from matplotlib.widgets import Slider
 import numpy as np
 from scipy.interpolate import griddata
 from datetime import datetime
@@ -119,7 +121,7 @@ class Plot:
             latitude = coordinates[...,1]
             longitude = coordinates[...,0]
             coordinates = np.stack([latitude, longitude], axis=-1)
-            irradiance = sim.irradiance_history
+            irradiance = sim.history
             args = (coordinates, irradiance,)
             kwargs['title'] = 'Irradiance (W/m²)'
             kwargs['vmax'] = np.amax(irradiance)
@@ -127,7 +129,7 @@ class Plot:
         elif plot_type=='temperature':
             self.func = self.animate
             sim = args[0]
-            temperature = sim.temperature_history - 273.15
+            temperature = sim.history - 273.15
             # temperature = temperature[len(temperature)//2:]
             coordinates = sim.planet.surface.coordinates
             latitude = coordinates[...,1]
@@ -141,7 +143,7 @@ class Plot:
         elif plot_type=='heat':
             self.func = self.animate
             sim = args[0]
-            heat = sim.heat_history
+            heat = sim.history
             coordinates = sim.planet.surface.coordinates
             latitude = coordinates[...,1]
             longitude = coordinates[...,0]
@@ -226,11 +228,11 @@ class Plot:
 
     @staticmethod
     def orbits(sim: Simulation):
-        position_history: dict[str, np.ndarray] = sim.position_history
+        position_history: dict[str, np.ndarray] = sim.history
         bodies: list[CelestialBody] = [body for body in sim.stellar_system.bodies if body.name in position_history]
 
         if sim.planet is not None:
-            target_planet_position = sim.position_history[sim.planet.name].copy()
+            target_planet_position = sim.history[sim.planet.name].copy()
             for body in bodies:
                 position_history[body.name] -= target_planet_position
 
@@ -482,4 +484,256 @@ class Plot:
         )
 
         plt.tight_layout()
+        plt.show()
+
+
+    @staticmethod
+    def interactive_map(data, coordinates, plot_type):
+        """
+        Display a time-varying, layer-varying quantity on an equirectangular map
+        with two sliders: one for time index, one for layer index.
+
+        Parameters
+        ----------
+        data : np.ndarray
+            Array of shape (n_snapshots, n_layers, n_columns).
+            data[t, l, :] gives the quantity for time t, layer l, and all columns.
+        coordinates : np.ndarray
+            Array of shape (n_columns,2) where each row contains the longitude and latitude of an air column.
+        plot_type : str
+            The name of the quantity described by `data`, used for the title and descriptive purposes.
+            (e.g. 'pressure', 'density', 'air_temperature')
+        """
+        title = plot_type.replace('_', ' ').title()
+
+        longitude = coordinates[...,0]
+        latitude = coordinates[...,1]
+        
+        n_snapshots = data.shape[0]
+        n_columns = data.shape[-1]
+        data = data.reshape(n_snapshots, -1, n_columns)
+        n_layers = data.shape[1]
+        assert latitude.shape == (n_columns,)
+        assert longitude.shape == (n_columns,)
+
+        # Create a regular lat-lon grid for displaying the data
+        # Adjust resolution as needed.
+        lat_res = 180
+        lon_res = 360
+        lat_lin = np.linspace(-90, 90, lat_res)
+        lon_lin = np.linspace(-180, 180, lon_res)
+        LON_grid, LAT_grid = np.meshgrid(lon_lin, lat_lin)
+
+        # Initial indices for time and layer
+        time_idx = 0
+        layer_idx = 0
+
+        # Interpolate the data onto the regular grid
+        # data_slice shape is (n_columns,) for the chosen time/layer
+        data_slice = data[time_idx, layer_idx, :]
+        grid_vals = griddata((longitude, latitude),
+                             data_slice,
+                             (LON_grid, LAT_grid),
+                             method='linear')
+
+        # Create figure and main axis
+        fig, ax = plt.subplots(figsize=(8, 4))
+        plt.subplots_adjust(left=0.25, bottom=0.25)  # Make space for sliders
+
+        # Plot the initial data using an equirectangular projection
+        # Here we simply use ax.imshow() with an "extent" that spans lon/lat
+        # from -180 to 180 and -90 to 90. Alternatively, you could use:
+        #   ax.pcolormesh(LON_grid, LAT_grid, grid_vals, cmap='viridis', shading='auto')
+        # Just be mindful of the coordinate orientation.
+
+        im = ax.imshow(grid_vals,
+                       extent=(-180, 180, -90, 90),
+                       origin='lower',
+                       cmap='viridis',
+                       aspect='auto',
+                       vmin=np.amin(data), vmax=np.amax(data))
+        ax.set_title(f"{title} (Time=0, Layer=0)")
+        ax.set_xlabel("Longitude")
+        ax.set_ylabel("Latitude")
+
+        # Add colorbar
+        cbar = plt.colorbar(im, ax=ax, orientation='vertical')
+        cbar.set_label(title)
+
+        # Define slider axes for Time and Layer
+        ax_time = plt.axes((0.25, 0.1, 0.65, 0.03))
+        ax_layer = plt.axes((0.25, 0.05, 0.65, 0.03))
+
+        # Create the sliders
+        slider_time = Slider(ax_time, 'Time', 0, n_snapshots - 1,
+                             valinit=time_idx, valstep=1)
+        if n_layers > 1:
+            slider_layer = Slider(ax_layer, 'Layer', 0, n_layers - 1,
+                                  valinit=layer_idx, valstep=1)
+
+        def update(_):
+            # Fetch current slider values
+            t_idx = int(slider_time.val)
+            l_idx = int(slider_layer.val) if n_layers > 1 else 0
+
+            # Interpolate new data for the selected time/layer
+            new_data_slice = data[t_idx, l_idx, :]
+            new_grid_vals = griddata((longitude, latitude),
+                                     new_data_slice,
+                                     (LON_grid, LAT_grid),
+                                     method='linear')
+
+            # Update the image
+            im.set_data(new_grid_vals)
+            ax.set_title(f"{title} (Time={t_idx}, Layer={l_idx})")
+
+            # Force redraw
+            fig.canvas.draw_idle()
+
+        # Connect sliders to update function
+        slider_time.on_changed(update)
+        if n_layers > 1:
+            slider_layer.on_changed(update)
+
+        # Show the interactive plot
+        plt.show()
+
+
+    @staticmethod
+    def interactive_stream(vector_field: np.ndarray, coordinates: np.ndarray, resolution: int = 360):
+        """
+        Create an interactive plot to visualize vector fields as stream plots.
+        Includes sliders for time and layer selection.
+
+        Parameters
+        ----------
+        vector_field : np.ndarray
+            Array of shape (n_snapshots, n_layers, n_columns, 2) where:
+            velocity[t, l, :, 0] gives the zonal component for the atmospheric node (t, l),
+            velocity[t, l, :, 1] gives the meridional component.
+            velocity[t, l, :, 2] gives the vertical component.
+        coordinates : np.ndarray
+            Array of shape (n_columns, 2) where each row contains the longitude and latitude of an air column.
+        resolution : int, optional
+            The resolution of the grid for interpolation. Default is 360.
+        """
+        n_snapshots = vector_field.shape[0]
+        n_layers = vector_field.shape[1]
+        n_columns = vector_field.shape[2]
+
+        longitude = coordinates[:, 0]
+        latitude = coordinates[:, 1]
+
+        assert longitude.shape == (n_columns,)
+        assert latitude.shape == (n_columns,)
+
+        # Initial indices for time and layer
+        time_idx = 0
+        layer_idx = 0
+
+        # Create a regular lat-lon grid for displaying the data
+        lon_grid, lat_grid = np.meshgrid(
+            np.linspace(-180, 180, resolution),
+            np.linspace(-90, 90, resolution // 2)
+        )
+        meshgrid = np.stack((lon_grid, lat_grid), axis=-1)
+
+        # Interpolate velocity components to the grid for initial indices
+        u = griddata(
+            points=coordinates[...,:2],
+            values=vector_field[time_idx, layer_idx, :, 0],
+            xi=meshgrid,
+            method='linear'
+        )
+        v = griddata(
+            points=coordinates[...,:2],
+            values=vector_field[time_idx, layer_idx, :, 1],
+            xi=meshgrid,
+            method='linear'
+        )
+        w = griddata(
+            points=coordinates[...,:2],
+            values=vector_field[time_idx, layer_idx, :, 2],
+            xi=meshgrid,
+            method='nearest'
+        )
+        vmin, vmax = np.amin(vector_field[..., 2]), np.amax(vector_field[..., 2])
+
+        # Create figure and axis
+        fig, ax = plt.subplots(figsize=(12, 6))
+        plt.subplots_adjust(left=0.25, bottom=0.25)  # Make space for sliders
+
+        # Plot the initial speed as background
+        img = ax.imshow(w, extent=(-180, 180, -90, 90), origin='lower', cmap='viridis', aspect='auto', vmin=vmin, vmax=vmax)
+        plt.colorbar(img, ax=ax, label='Vertical Component')
+
+        # Add initial streamlines
+        stream = ax.streamplot(
+            lon_grid, lat_grid, u, v,
+            color='white', density=1.5, linewidth=0.5
+        )
+        ax.set_title(f"Streamlines (Time={time_idx}, Layer={layer_idx})")
+        ax.set_xlabel("Longitude")
+        ax.set_ylabel("Latitude")
+
+        # Define slider axes for Time and Layer
+        ax_time = plt.axes((0.25, 0.1, 0.65, 0.03))
+        ax_layer = plt.axes((0.25, 0.05, 0.65, 0.03))
+
+        # Create sliders
+        slider_time = Slider(ax_time, 'Time', 0, n_snapshots - 1, valinit=time_idx, valstep=1)
+        if n_layers > 1:
+            slider_layer = Slider(ax_layer, 'Layer', 0, n_layers - 1, valinit=layer_idx, valstep=1)
+
+        def update(_):
+            nonlocal stream
+            # Fetch current slider values
+            t_idx = int(slider_time.val)
+            l_idx = int(slider_layer.val) if n_layers > 1 else 0
+
+            # Interpolate velocity components to the grid for selected indices
+            u = griddata(
+                points=coordinates[...,:2],
+                values=vector_field[t_idx, l_idx, :, 0],
+                xi=meshgrid,
+                method='linear'
+            )
+            v = griddata(
+                points=coordinates[...,:2],
+                values=vector_field[t_idx, l_idx, :, 1],
+                xi=meshgrid,
+                method='linear'
+            )
+            w = griddata(
+                points=coordinates[...,:2],
+                values=vector_field[time_idx, layer_idx, :, 2],
+                xi=meshgrid,
+                method='nearest'
+            )
+
+            # Update background
+            img.set_data(w)
+
+            # Remove and redraw streamlines
+            stream.lines.remove()
+            for art in ax.get_children():
+                if isinstance(art, matplotlib.patches.FancyArrowPatch):
+                    art.remove()
+            stream = ax.streamplot(
+                lon_grid, lat_grid, u, v,
+                color='white', density=1.5, linewidth=0.5
+            )
+
+            # Update title
+            ax.set_title(f"Streamlines (Time={t_idx}, Layer={l_idx})")
+
+            # Force redraw
+            fig.canvas.draw_idle()
+
+        # Connect sliders to update function
+        slider_time.on_changed(update)
+        if n_layers > 1:
+            slider_layer.on_changed(update)
+
+        # Show interactive plot
         plt.show()
