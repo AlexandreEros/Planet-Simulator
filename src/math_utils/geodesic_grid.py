@@ -43,7 +43,7 @@ class GeodesicGrid:
             self.latitude = coordinates[:, 1]
 
             self.adjacency_matrix = self.build_adjacency_matrix()
-            self.pentagons = self.get_pentagonal_vertices(adjacency_matrix)
+            self.pentagons = self.get_pentagonal_vertices(self.adjacency_matrix)
 
         except Exception as err:
             raise Exception(f"Error in the constructor of `GeodesicGrid`:\n{err}")
