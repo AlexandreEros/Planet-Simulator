@@ -42,7 +42,7 @@ class GeodesicGrid:
             self.longitude = coordinates[:, 0]
             self.latitude = coordinates[:, 1]
 
-            adjacency_matrix = self.build_adjacency_matrix()
+            self.adjacency_matrix = self.build_adjacency_matrix()
             self.pentagons = self.get_pentagonal_vertices(adjacency_matrix)
 
         except Exception as err:
