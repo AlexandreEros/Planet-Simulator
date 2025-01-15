@@ -28,12 +28,12 @@ class Atmosphere:
     def update(self, delta_t):
         self.thermodynamics.set_heat_from_surface()
         self.thermodynamics.set_temperature_rate()
-        self.air_flow.accelerate(0.5 * delta_t)
+        # self.air_flow.accelerate(0.5 * delta_t)
 
         self.thermodynamics.exchange_heat_with_surface(delta_t)
         self.thermodynamics.conduct_heat(delta_t)
-        self.air_flow.change_air_data(delta_t)
+        self.air_flow.rk4_step(delta_t)
 
         self.thermodynamics.set_heat_from_surface()
         self.thermodynamics.set_temperature_rate()
-        self.air_flow.accelerate(0.5 * delta_t)
+        # self.air_flow.accelerate(0.5 * delta_t)
