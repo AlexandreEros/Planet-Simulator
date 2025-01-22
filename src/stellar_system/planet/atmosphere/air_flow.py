@@ -116,6 +116,7 @@ class AirFlow:
         # Enforce constraints such as:
         #  - No-slip boundary conditions
         self.velocity[0] = 0.0  # Example no-slip at the bottom layer
+        self.velocity[...,2] = 0.0
         #  - Non-negativity of density & temperature
         self.air_data.temperature = np.fmax(self.air_data.temperature, 0.0)
         self.air_data.density = np.fmax(self.air_data.density, 0.0)

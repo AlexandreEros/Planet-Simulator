@@ -3,10 +3,10 @@ import numpy as np
 from scipy import constants
 
 from .materials import Materials
-from src.math_utils import GeodesicGrid, VectorOperatorsSpherical
+from src.math_utils import GeodesicGrid, VectorOperatorsSpherical, GaussLegendreGrid
 from src.math_utils.vector_utils import cartesian_to_spherical, normalize
 
-class Surface(GeodesicGrid):
+class Surface(GaussLegendreGrid):
     def __init__(self, **kwargs):
         self.resolution = 0 if 'resolution' not in kwargs else int(kwargs['resolution'])
         self.radius = 1.0 if 'radius' not in kwargs else float(kwargs['radius'])

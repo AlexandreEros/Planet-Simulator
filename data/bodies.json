@@ -127,7 +127,7 @@
             },
             "color": "#b7410e",
             "surface_data": {
-                "resolution": 3,
+                "resolution": 6,
                 "radius": 3.3895e6,
                 "noise_scale": 2.0,
                 "noise_octaves": 5,
@@ -138,7 +138,7 @@
             },
             "atmosphere_data": {
                 "surface_pressure": 610,
-                "n_layers": 6,
+                "n_layers": 10,
                 "greenhouse_efficiency": 1e-5,
                 "chi_CO2": 1.0,
                 "material_name": "Martian Atmosphere"

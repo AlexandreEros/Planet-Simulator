@@ -1,2 +1,3 @@
 from .geodesic_grid import GeodesicGrid
+from .gauss_legendre_grid import GaussLegendreGrid
 from .vector_operators_spherical import VectorOperatorsSpherical
