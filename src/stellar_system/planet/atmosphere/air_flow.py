@@ -1,6 +1,6 @@
 import numpy as np
 
-from src.math_utils.vector_utils import polar_to_cartesian_velocity, cartesian_to_polar_velocity
+from src.math_utils.vector_utils import cartesian_to_polar_velocity
 from .air_data import AirData
 from .adjacency_manager import AdjacencyManager
 from src.stellar_system.planet.surface import Surface
@@ -28,9 +28,9 @@ class AirFlow:
         self.R_specific = self.air_data.R_specific
         self.dynamic_viscosity = self.air_data.material['dynamic_viscosity']
 
-        self.omega_spherical = np.array(polar_to_cartesian_velocity(*angular_velocity_vector,
-                                                                    self.adjacency.cartesian)).reshape((self.n_layers, self.n_columns, 3,))
-        self.cos_lat = np.cos(np.deg2rad(self.air_data.coordinates[...,1])).reshape((self.n_layers, self.n_columns))
+        self.omega_spherical = np.stack(np.array(cartesian_to_polar_velocity(angular_velocity_vector,
+                                                                            self.adjacency.cartesian)),
+                                        axis=-1).reshape((self.n_layers, self.n_columns, 3))
 
         self.zonal_derivative, self.meridional_derivative, self.vertical_derivative = self.adjacency.vector_operators.partial_derivative_operators
         self.calculate_gradient = self.adjacency.vector_operators.calculate_gradient
@@ -56,7 +56,7 @@ class AirFlow:
         self.temperature_gradient = self.calculate_gradient(self.air_data.temperature.ravel()).reshape(self.shape + (3,))
         self.velocity_divergence = self.calculate_divergence(self.velocity.reshape((-1,3))).reshape(self.shape)
         self.velocity_laplacian = self.calculate_laplacian(self.velocity)
-        self.velocity_gradient_tensor = self.calculate_gradient_tensor(self.velocity)
+        # self.velocity_gradient_tensor = self.calculate_gradient_tensor(self.velocity)
 
     def apply_forces(self):
         self.update_gradients()
@@ -64,7 +64,9 @@ class AirFlow:
 
         weight = self.air_data.density[...,None] * self.air_data.g[...,None] * np.array([0.0, 0.0, -1.0])
 
-        coriolis_force = -2 * self.air_data.density[...,None] * np.cross(self.omega_spherical, self.velocity)
+        vel_without_z = np.zeros(self.velocity.shape)
+        vel_without_z[...,:2] = self.velocity[...,:2]
+        coriolis_force = -2 * self.air_data.density[...,None] * np.cross(self.omega_spherical, vel_without_z)
 
         viscous_force = self.dynamic_viscosity * self.velocity_laplacian
 
@@ -152,6 +154,6 @@ class AirFlow:
         #    temperature_rate = - velocity dot grad(T)
         #    density_rate = - density * div(velocity)
         dTdt = -np.einsum('...i,...i->...', self.velocity, self.temperature_gradient)
-        dRhodt = -(self.air_data.density * self.velocity_divergence)
+        dRhodt = -self.air_data.density * self.velocity_divergence
 
         return dvdt, dTdt, dRhodt

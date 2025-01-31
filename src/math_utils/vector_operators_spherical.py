@@ -4,9 +4,9 @@ from scipy import sparse
 
 
 class VectorOperatorsSpherical:
-    def __init__(self, latitude: np.ndarray, longitude: np.ndarray, radius: np.ndarray, inv_dists: sparse.csr_matrix):
-        self.latitude = np.deg2rad(latitude)
+    def __init__(self, longitude: np.ndarray, latitude: np.ndarray, radius: np.ndarray, inv_dists: sparse.csr_matrix):
         self.longitude = np.deg2rad(longitude)
+        self.latitude = np.deg2rad(latitude)
         self.radius = radius
         self.inv_dists = inv_dists  # Sparse matrix whose non-zero elements are inverse Euclidean distances between adjacent nodes
 

@@ -24,19 +24,9 @@ class Thermodynamics:
         # Constants and parameters
         k_surface_atmosphere = self.material['convective_heat_transfer_coefficient']  # W/m²·K
 
-        specific_heat_air = self.material['isobaric_mass_heat_capacity']  # J/kg·K
-
-        surface_temperature = self.surface.temperature
-
-        layer_indices = np.array([0,])  # self.air_data.lowest_layer_above_surface
-        vertex_indices = np.arange(self.surface.n_vertices)
-
-        # Lowest atmospheric layer properties
-        atmospheric_temperature = self.air_data.temperature[layer_indices, vertex_indices]
-
         # Heat flux between surface and atmosphere
         area = self.surface.vertex_area
-        self.heat_flux_from_surface = k_surface_atmosphere * area * (surface_temperature - atmospheric_temperature)
+        self.heat_flux_from_surface = k_surface_atmosphere * area * (self.surface.temperature - self.air_data.temperature[0])
 
     def exchange_heat_with_surface(self, delta_t: float):
         # Update surface temperature
@@ -44,22 +34,16 @@ class Thermodynamics:
         specific_heat_air = self.material['isobaric_mass_heat_capacity']  # J/kg·K
         area = self.surface.vertex_area
 
-        layer_indices = np.array([0,])  # self.air_data.lowest_layer_above_surface
-        vertex_indices = np.arange(self.surface.n_vertices)
-
         ground_layer_thickness = self.surface.layer_depths[1] - self.surface.layer_depths[0]
-        self.surface.subsurface_temperature[0] -= (
-            self.heat_flux_from_surface / (self.surface.density * self.surface.specific_heat_capacity * ground_layer_thickness * area)
+        self.surface.subsurface_temperature[0] -= self.heat_flux_from_surface / (
+            self.surface.density * self.surface.specific_heat_capacity * ground_layer_thickness * area
         ) * delta_t
 
         # Update atmospheric temperature
-        atmospheric_density = self.air_data.density[layer_indices, vertex_indices]
-        # atmospheric_layer_thickness = self.air_data.altitudes[layer_indices] - np.where(layer_indices==0, 0.0, self.air_data.altitudes[layer_indices - 1])
-        atmospheric_layer_thickness = self.air_data.altitudes[1]
-        increment = self.heat_flux_from_surface / (
-                        atmospheric_density * specific_heat_air * atmospheric_layer_thickness * area
-                    ) * delta_t
-        np.add.at(self.air_data.temperature, (layer_indices, vertex_indices), increment)
+        atmospheric_layer_thickness = self.air_data.altitudes[1] - self.air_data.altitudes[0]
+        self.air_data.temperature[0] += self.heat_flux_from_surface / (
+                        self.air_data.density[0] * specific_heat_air * atmospheric_layer_thickness * area
+        ) * delta_t
 
         # Ensure temperatures remain physical (e.g., above 0 K)
         self.air_data.temperature = np.fmax(self.air_data.temperature, 0.0)
@@ -79,7 +63,7 @@ class Thermodynamics:
         D = sparse.diags(k_air / (density_flat * cp_air))
 
         T_flat = self.air_data.temperature.ravel()
-        self.temperature_rate = D.dot(-self.adjacency.laplacian_matrix.dot(T_flat))
+        self.temperature_rate = D.dot(self.adjacency.laplacian_matrix.dot(T_flat))
 
     def conduct_heat(self, delta_t: float):
         T_flat = self.air_data.temperature.ravel()

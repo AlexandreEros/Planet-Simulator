@@ -6,7 +6,7 @@ from .materials import Materials
 from src.math_utils import GeodesicGrid, VectorOperatorsSpherical, GaussLegendreGrid
 from src.math_utils.vector_utils import cartesian_to_spherical, normalize
 
-class Surface(GaussLegendreGrid):
+class Surface(GeodesicGrid):
     def __init__(self, **kwargs):
         self.resolution = 0 if 'resolution' not in kwargs else int(kwargs['resolution'])
         self.radius = 1.0 if 'radius' not in kwargs else float(kwargs['radius'])
@@ -23,7 +23,7 @@ class Surface(GaussLegendreGrid):
         self.vertices *= self.relative_distance[:,None]
         self.elevation = (self.relative_distance - 1.0) * self.radius
 
-        self.vector_operators = VectorOperatorsSpherical(self.latitude, self.longitude,
+        self.vector_operators = VectorOperatorsSpherical(self.longitude, self.latitude,
                                                          self.elevation+self.radius,
                                                          self.adjacency_matrix.tocsr())
         self.zonal_derivative, self.meridional_derivative, self.vertical_derivative = self.vector_operators.partial_derivative_operators
@@ -122,7 +122,7 @@ class Surface(GaussLegendreGrid):
         dz = np.diff(self.layer_depths, prepend=0)  # Layer thicknesses
 
         # Top layer (surface interaction)
-        self.subsurface_temperature[0] += delta_t * self.surface_heat_flux() / (rho * c * dz[1] )#* self.vertex_area)
+        self.subsurface_temperature[0] += delta_t * self.surface_heat_flux() / (rho * c * dz[1] )
         heat_loss_to_subsurface = alpha * (self.subsurface_temperature[0]-self.subsurface_temperature[1]) / dz[1]**2
         self.subsurface_temperature[0] -= delta_t * heat_loss_to_subsurface
 

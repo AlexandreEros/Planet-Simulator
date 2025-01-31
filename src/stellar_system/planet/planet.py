@@ -24,7 +24,7 @@ class Planet(CelestialBody):
         self.ecliptic_longitude_of_north_pole = 0.0 if 'ecliptic_longitude_of_north_pole_deg' not in rotation_data else deg2rad(rotation_data['ecliptic_longitude_of_north_pole_deg'])
         self.initial_season_rad = self.ecliptic_longitude_of_north_pole - self.argument_of_perihelion
         initial_longitude = 0.0 if 'subsolar_point_longitude' not in rotation_data else rotation_data['subsolar_point_longitude']
-        self.current_angle = np.pi + self.initial_season_rad - deg2rad(initial_longitude)
+        self.current_angle = - self.initial_season_rad - deg2rad(initial_longitude)
 
         self.bond_albedo = surface_data['bond_albedo']
         semi_major_axis = self.semi_major_axis if self.body_type=='planet' else self.parent.semi_major_axis
@@ -63,7 +63,8 @@ class Planet(CelestialBody):
                 'pressure': self.atmosphere.air_data.pressure,
                 'density': self.atmosphere.air_data.density,
                 'velocity': self.atmosphere.air_flow.velocity,
-                'pressure_gradient': self.atmosphere.air_flow.pressure_gradient
+                'pressure_gradient': self.atmosphere.air_flow.pressure_gradient,
+                'velocity_divergence': self.atmosphere.air_flow.velocity_divergence
             }
         else:
             return {
