@@ -5,8 +5,6 @@ from .air_data import AirData
 from .adjacency_manager import AdjacencyManager
 from src.stellar_system.planet.surface import Surface
 
-
-
 class AirFlow:
     def __init__(self, air_data: AirData, surface: Surface, adjacency: AdjacencyManager, angular_velocity_vector: np.ndarray):
         """
@@ -39,6 +37,8 @@ class AirFlow:
         self.calculate_laplacian = self.adjacency.vector_operators.calculate_laplacian
         self.calculate_gradient_tensor = self.adjacency.vector_operators.calculate_vector_gradient
 
+        self.set_hydrostatic_equilibrium()
+
         self.pressure_gradient = np.zeros((self.n_layers, self.n_columns, 3))
         self.temperature_gradient = np.zeros((self.n_layers, self.n_columns, 3))
         self.net_force = np.zeros((self.n_layers, self.n_columns, 3))
@@ -50,6 +50,19 @@ class AirFlow:
         self.velocity_laplacian = np.zeros((self.n_layers, self.n_columns, 3))
         self.velocity_gradient_tensor = np.zeros((self.n_layers, self.n_columns, 3, 3))
 
+        # Damping coefficients
+        self.nu_div = 1e-2         # Divergence damping coefficient
+        self.alpha_rayleigh = 1e-1 * (self.air_data.altitudes - self.air_data.altitudes[0]) / (
+            self.air_data.altitudes[-1] - self.air_data.altitudes[0]
+        ) # Rayleigh friction coefficient
+
+
+    def set_hydrostatic_equilibrium(self):
+        dpdh = self.vertical_derivative.dot(self.air_data.pressure.ravel()).reshape(self.air_data.pressure.shape)
+        self.air_data.density = -dpdh / self.air_data.g
+
+        self.air_data.temperature = self.air_data.pressure / (self.air_data.density * self.R_specific)
+
 
     def update_gradients(self):
         self.pressure_gradient = self.calculate_gradient(self.air_data.pressure.ravel()).reshape(self.shape + (3,))
@@ -58,31 +71,17 @@ class AirFlow:
         self.velocity_laplacian = self.calculate_laplacian(self.velocity)
         # self.velocity_gradient_tensor = self.calculate_gradient_tensor(self.velocity)
 
-    def apply_forces(self):
-        self.update_gradients()
-        gradient_force = -self.pressure_gradient
-
-        weight = self.air_data.density[...,None] * self.air_data.g[...,None] * np.array([0.0, 0.0, -1.0])
-
-        vel_without_z = np.zeros(self.velocity.shape)
-        vel_without_z[...,:2] = self.velocity[...,:2]
-        coriolis_force = -2 * self.air_data.density[...,None] * np.cross(self.omega_spherical, vel_without_z)
-
-        viscous_force = self.dynamic_viscosity * self.velocity_laplacian
-
-        self.net_force = gradient_force + weight + coriolis_force + viscous_force
 
     def rk4_step(self, delta_t):
         """
         Perform one 4th-order Runge-Kutta step to update velocity, temperature, and density.
-        This implementation avoids mutating state during intermediate stages.
         """
-        # 1) Save the current state
+        # Save the current state
         v0 = self.velocity.copy()  # shape: (n_layers, n_columns, 3)
         T0 = self.air_data.temperature.copy()  # shape: (n_layers, n_columns)
         rho0 = self.air_data.density.copy()  # shape: (n_layers, n_columns)
 
-        # 2) Compute RK4 coefficients (k1, k2, k3, k4)
+        # Compute RK4 coefficients (k1, k2, k3, k4)
         # --------------------------------------------
         # Stage 1: k1
         dv1, dT1, dRho1 = self.get_tendencies(v0, T0, rho0)
@@ -105,21 +104,11 @@ class AirFlow:
         rho_temp = rho0 + delta_t * dRho3
         dv4, dT4, dRho4 = self.get_tendencies(v_temp, T_temp, rho_temp)
 
-        # 3) Combine the coefficients to update the state
+        # Combine the coefficients to update the state
         # ----------------------------------------------
         self.velocity = v0 + (delta_t / 6.0) * (dv1 + 2.0 * dv2 + 2.0 * dv3 + dv4)
         self.air_data.temperature = T0 + (delta_t / 6.0) * (dT1 + 2.0 * dT2 + 2.0 * dT3 + dT4)
         self.air_data.density = rho0 + (delta_t / 6.0) * (dRho1 + 2.0 * dRho2 + 2.0 * dRho3 + dRho4)
-
-        # 4) Enforce physical constraints
-        # -------------------------------
-        # No-slip boundary conditions
-        self.velocity[0] = 0.0  # No-slip at the surface
-        self.velocity[..., 2] = 0.0  # No vertical motion
-
-        # Non-negativity of density and temperature
-        self.air_data.temperature = np.fmax(self.air_data.temperature, 0.0)
-        self.air_data.density = np.fmax(self.air_data.density, 0.0)
 
         # Mass conservation
         total_mass_before = np.sum(rho0)
@@ -127,7 +116,17 @@ class AirFlow:
         self.air_data.density *= (total_mass_before / total_mass_after)
 
         # Update pressure using the ideal gas law
+        old_pressure = self.air_data.pressure.copy()
         self.air_data.pressure = self.air_data.density * self.R_specific * self.air_data.temperature
+
+        # Omega equation for vertical flow
+        omega = (self.air_data.pressure - old_pressure) / delta_t
+        self.velocity[..., 2] = omega / (self.air_data.density * self.air_data.g)
+        self.velocity[..., 2] = np.fmin(self.velocity[..., 2], 1.0)
+        self.velocity[..., 2] = np.fmax(self.velocity[..., 2], -1.0)
+
+        # No-slip boundary conditions
+        self.velocity[0] = 0.0  # No-slip at the surface
 
 
 
@@ -169,7 +168,15 @@ class AirFlow:
         dvdt = np.zeros_like(velocity)
         dvdt[is_air] = net_force[is_air] / density[is_air][..., None] - convective_acceleration[is_air]
 
+        # Divergence damping
+        grad_divergence = self.calculate_gradient(velocity_divergence.ravel()).reshape(self.shape + (3,))
+        dvdt[is_air] += - self.nu_div * grad_divergence[is_air]
+
+        # Rayleigh friction
+        dvdt[is_air] += - self.alpha_rayleigh[is_air][...,None] * velocity[is_air]
+
         dTdt = -np.einsum('...i,...i->...', velocity, temperature_gradient)
         dRhodt = -density * velocity_divergence
 
         return dvdt, dTdt, dRhodt
+

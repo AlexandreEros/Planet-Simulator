@@ -15,98 +15,101 @@ from .math_utils import GeodesicGrid
 
 class Plot:
     def __init__(self, plot_type, *args, **kwargs):
-        if plot_type=='none':
+        if plot_type == 'none':
             self.func = self.nop
-        if plot_type=='mesh':
+        if plot_type == 'mesh':
             self.func = self.mesh
-        elif plot_type=='orbits':
+        elif plot_type == 'orbits':
             self.func = self.orbits
             args = (args[0],)
 
-        elif plot_type=='atmosphere':
+        elif plot_type == 'atmosphere':
             planet, vertex = args
             args = (planet.atmosphere, vertex)
             self.func = self.atmosphere
-        elif plot_type=='pressure':
+        elif plot_type == 'pressure':
             planet, layer_idx = args
             coordinates = planet.surface.coordinates
-            latitude = coordinates[...,1]
-            longitude = coordinates[...,0]
+            latitude = coordinates[..., 1]
+            longitude = coordinates[..., 0]
             coordinates = np.stack([latitude, longitude], axis=-1)
             pressure = planet.atmosphere.air_data.pressure[layer_idx]
             args = (coordinates, pressure)
             min_altitude = np.amin(planet.atmosphere.air_data.altitudes[layer_idx])
             max_altitude = np.amax(planet.atmosphere.air_data.altitudes[layer_idx])
-            kwargs['title'] = f'Air pressure (Pa) between {min_altitude/1000:.2f} and {max_altitude/1000:.2f} km high'
+            kwargs[
+                'title'] = f'Air pressure (Pa) between {min_altitude / 1000:.2f} and {max_altitude / 1000:.2f} km high'
             self.func = self.worldmap
-        elif plot_type=='density':
+        elif plot_type == 'density':
             planet, layer_idx = args
             coordinates = planet.surface.coordinates
-            latitude = coordinates[...,1]
-            longitude = coordinates[...,0]
+            latitude = coordinates[..., 1]
+            longitude = coordinates[..., 0]
             coordinates = np.stack([latitude, longitude], axis=-1)
             density = planet.atmosphere.air_data.density[layer_idx]
             args = (coordinates, density)
             min_altitude = np.amin(planet.atmosphere.air_data.altitudes[layer_idx])
             max_altitude = np.amax(planet.atmosphere.air_data.altitudes[layer_idx])
-            kwargs['title'] = f'Air density (kg/m³) between {min_altitude / 1000:.2f} and {max_altitude / 1000:.2f} km high'
+            kwargs[
+                'title'] = f'Air density (kg/m³) between {min_altitude / 1000:.2f} and {max_altitude / 1000:.2f} km high'
             self.func = self.worldmap
-        elif plot_type=='air_temperature':
+        elif plot_type == 'air_temperature':
             planet, layer_idx = args
             coordinates = planet.surface.coordinates
-            latitude = coordinates[...,1]
-            longitude = coordinates[...,0]
+            latitude = coordinates[..., 1]
+            longitude = coordinates[..., 0]
             coordinates = np.stack([latitude, longitude], axis=-1)
             temperature = planet.atmosphere.air_data.temperature[layer_idx] - 273.15
             args = (coordinates, temperature)
             min_altitude = np.amin(planet.atmosphere.air_data.altitudes[layer_idx])
             max_altitude = np.amax(planet.atmosphere.air_data.altitudes[layer_idx])
-            kwargs['title'] = f'Temperature (ºC) between {min_altitude / 1000:.2f} and {max_altitude / 1000:.2f} km high'
+            kwargs[
+                'title'] = f'Temperature (ºC) between {min_altitude / 1000:.2f} and {max_altitude / 1000:.2f} km high'
             kwargs['cmap'] = 'plasma'
             self.func = self.worldmap
 
-        elif plot_type=='pressure_gradient':
+        elif plot_type == 'pressure_gradient':
             planet, layer_idx = args
             coordinates = planet.surface.coordinates
-            latitude = coordinates[...,1]
-            longitude = coordinates[...,0]
+            latitude = coordinates[..., 1]
+            longitude = coordinates[..., 0]
             coordinates = np.stack([latitude, longitude], axis=-1)
             pressure = planet.atmosphere.air_data.pressure[layer_idx]
             pressure_gradient = planet.atmosphere.air_flow.pressure_gradient[layer_idx]
             args = (coordinates, pressure, pressure_gradient)
             altitude = planet.atmosphere.air_data.altitudes[layer_idx]
-            kwargs['title'] = f'Pressure Gradient at {altitude/1000:.2f} km high'
+            kwargs['title'] = f'Pressure Gradient at {altitude / 1000:.2f} km high'
             self.func = self.gradient
 
-        elif plot_type=='elevation':
+        elif plot_type == 'elevation':
             self.func = self.worldmap
             surf = args[0]
             coordinates = surf.coordinates
-            latitude = coordinates[...,1]
-            longitude = coordinates[...,0]
+            latitude = coordinates[..., 1]
+            longitude = coordinates[..., 0]
             coordinates = np.stack([latitude, longitude], axis=-1)
             kwargs['title'] = 'Elevation (m)'
-            kwargs['cmap'] = 'terrain' #surf.cmap
+            kwargs['cmap'] = 'terrain'  # surf.cmap
             kwargs['resolution'] = int(np.ceil(0.03 * len(surf.vertices)))
             args = (coordinates, surf.elevation)
-        elif plot_type=='albedo':
+        elif plot_type == 'albedo':
             self.func = self.worldmap
             surf = args[0]
             coordinates = surf.coordinates
-            latitude = coordinates[...,1]
-            longitude = coordinates[...,0]
+            latitude = coordinates[..., 1]
+            longitude = coordinates[..., 0]
             coordinates = np.stack([latitude, longitude], axis=-1)
             kwargs['title'] = 'Albedo'
             kwargs['resolution'] = int(np.ceil(0.03 * len(surf.vertices)))
             kwargs['vmax'] = 1
-            kwargs['vmin']= 0
+            kwargs['vmin'] = 0
             args = (coordinates, surf.albedo)
-        elif plot_type=='heat_capacity':
+        elif plot_type == 'heat_capacity':
             self.func = self.worldmap
             surf = args[0]
             coordinates = surf.coordinates
-            latitude = coordinates[...,1]
-            longitude = coordinates[...,0]
+            latitude = coordinates[..., 1]
+            longitude = coordinates[..., 0]
             coordinates = np.stack([latitude, longitude], axis=-1)
             kwargs['title'] = 'Heat capacity (J/m²·K)'
             kwargs['resolution'] = int(np.ceil(0.03 * max(coordinates.shape)))
@@ -114,39 +117,39 @@ class Plot:
             kwargs['vmin'] = np.amin(surf.heat_capacity)
             args = (coordinates, surf.heat_capacity)
 
-        elif plot_type=='irradiance':
+        elif plot_type == 'irradiance':
             self.func = self.animate
             sim = args[0]
             coordinates = sim.planet.surface.coordinates
-            latitude = coordinates[...,1]
-            longitude = coordinates[...,0]
+            latitude = coordinates[..., 1]
+            longitude = coordinates[..., 0]
             coordinates = np.stack([latitude, longitude], axis=-1)
             irradiance = sim.history
             args = (coordinates, irradiance,)
             kwargs['title'] = 'Irradiance (W/m²)'
             kwargs['vmax'] = np.amax(irradiance)
             kwargs['vmin'] = np.amin(irradiance)
-        elif plot_type=='temperature':
+        elif plot_type == 'temperature':
             self.func = self.animate
             sim = args[0]
             temperature = sim.history - 273.15
             # temperature = temperature[len(temperature)//2:]
             coordinates = sim.planet.surface.coordinates
-            latitude = coordinates[...,1]
-            longitude = coordinates[...,0]
+            latitude = coordinates[..., 1]
+            longitude = coordinates[..., 0]
             coordinates = np.stack([latitude, longitude], axis=-1)
-            is_equatorial = np.abs(coordinates[...,0]) < 10
+            is_equatorial = np.abs(coordinates[..., 0]) < 10
             args = (coordinates, temperature)
             kwargs['title'] = 'Temperature (ºC)'
             kwargs['vmax'] = np.amax(temperature)
             kwargs['vmin'] = np.amin(temperature)
-        elif plot_type=='heat':
+        elif plot_type == 'heat':
             self.func = self.animate
             sim = args[0]
             heat = sim.history
             coordinates = sim.planet.surface.coordinates
-            latitude = coordinates[...,1]
-            longitude = coordinates[...,0]
+            latitude = coordinates[..., 1]
+            longitude = coordinates[..., 0]
             coordinates = np.stack([latitude, longitude], axis=-1)
             args = (coordinates, heat,)
             kwargs['title'] = 'Heat Flux (W/m²)'
@@ -154,22 +157,21 @@ class Plot:
             kwargs['vmin'] = np.amin(heat)
 
 
-        elif plot_type=='velocity':
+        elif plot_type == 'velocity':
             planet, layer_idx = args
             coordinates = planet.surface.coordinates
-            latitude = coordinates[...,1]
-            longitude = coordinates[...,0]
+            latitude = coordinates[..., 1]
+            longitude = coordinates[..., 0]
             coordinates = np.stack([latitude, longitude], axis=-1)
             velocity = planet.atmosphere.air_flow.velocity[layer_idx]
             args = (coordinates, velocity)
             min_altitude = np.amin(planet.atmosphere.air_data.altitudes[layer_idx])
             max_altitude = np.amax(planet.atmosphere.air_data.altitudes[layer_idx])
-            kwargs['title'] = f'Streamlines of air flow between {min_altitude/1000:.2f} and {max_altitude/1000:.2f} km high'
+            kwargs[
+                'title'] = f'Streamlines of air flow between {min_altitude / 1000:.2f} and {max_altitude / 1000:.2f} km high'
             self.func = self.stream
 
         self.func(*args, **kwargs)
-
-
 
     @staticmethod
     def mesh(grid: GeodesicGrid) -> None:
@@ -198,7 +200,7 @@ class Plot:
             for face in faces:
                 try:
                     # face: {NDArray[int]: (3,)} are the indices of the triangles that make up the corresponding face
-                    triangle_coords = vertices[face]   # vertices[face] uses fancy indexing; array of shape (3, 3)
+                    triangle_coords = vertices[face]  # vertices[face] uses fancy indexing; array of shape (3, 3)
                     # Close the triangle by appending the first point at the end
                     closed_triangle = np.vstack([triangle_coords, triangle_coords[0]])  # shape (4,3)
                     x = closed_triangle[:, 0]  # Arrays of shape (4,)
@@ -224,8 +226,6 @@ class Plot:
         except Exception as e:
             print(f"An unexpected error occurred: {e}")
 
-
-
     @staticmethod
     def orbits(sim: Simulation):
         position_history: dict[str, np.ndarray] = sim.history
@@ -245,7 +245,7 @@ class Plot:
             # Extract positions for Sun and Earth from provided history
             x = position_history[body.name][:, 0]
             y = position_history[body.name][:, 1]
-            plt.plot(x, y, 'o-', label=body.name, color=body.color, markersize=2+np.log(body.mass/minmass))
+            plt.plot(x, y, 'o-', label=body.name, color=body.color, markersize=2 + np.log(body.mass / minmass))
 
         # Setting labels and title
         plt.xlabel("X Position (m)")
@@ -256,8 +256,6 @@ class Plot:
 
         # Display the plot
         plt.show()
-
-
 
     @staticmethod
     def worldmap(coordinates: np.ndarray, variable: np.ndarray,
@@ -275,12 +273,12 @@ class Plot:
 
         lon_grid, lat_grid = np.meshgrid(
             np.linspace(-180, 180, resolution),  # Longitude from -180 to 180 degrees
-            np.linspace(-90, 90, resolution//2)  # Latitude from -90 to 90 degrees
+            np.linspace(-90, 90, resolution // 2)  # Latitude from -90 to 90 degrees
         )
         meshgrid = np.stack((lat_grid, lon_grid), axis=-1)
 
         grid_values = griddata(
-            points=coordinates[:,:2],  # Points at which we have data
+            points=coordinates[:, :2],  # Points at which we have data
             values=variable,  # Data values
             xi=meshgrid,  # Points to interpolate at
             method='cubic'  # 'cubic', 'linear', or 'nearest'
@@ -299,8 +297,6 @@ class Plot:
         simplified_title = "".join(c for c in title if c.isalnum())
         fig.savefig(f"temp/{simplified_title}_map_{nowstr}.png")
 
-
-
     @staticmethod
     def animate(coordinates, variable_history, title: str = '', resolution: int = 360, vmin=None, vmax=None):
         """
@@ -317,17 +313,17 @@ class Plot:
 
         lon_grid, lat_grid = np.meshgrid(
             np.linspace(-180, 180, resolution),  # Longitude from -180 to 180 degrees
-            np.linspace(-90, 90, resolution//2)  # Latitude from -90 to 90 degrees
+            np.linspace(-90, 90, resolution // 2)  # Latitude from -90 to 90 degrees
         )
         meshgrid = np.stack((lat_grid, lon_grid), axis=-1)
 
         # Create initial plot with first frame
         datagrid_values = griddata(
-                        points=coordinates[:,:2],  # Points at which we have data
-                        values=variable_history[0],  # Data values
-                        xi=meshgrid,  # Points to interpolate at
-                        method='cubic'  # 'cubic', 'linear', or 'nearest'
-                    )
+            points=coordinates[:, :2],  # Points at which we have data
+            values=variable_history[0],  # Data values
+            xi=meshgrid,  # Points to interpolate at
+            method='cubic'  # 'cubic', 'linear', or 'nearest'
+        )
         img = ax.imshow(datagrid_values, extent=(-180, 180, -90, 90), origin='lower', cmap='plasma',
                         vmin=vmin, vmax=vmax)
         fig.colorbar(img, label=title)
@@ -335,7 +331,7 @@ class Plot:
         # Define the animation update function
         def update(frame):
             grid_values = griddata(
-                points=coordinates[:,:2],  # Points at which we have data
+                points=coordinates[:, :2],  # Points at which we have data
                 values=variable_history[frame],  # Data values
                 xi=meshgrid,  # Points to interpolate at
                 method='cubic'  # 'cubic', 'linear', or 'nearest'
@@ -355,30 +351,27 @@ class Plot:
         # Show the animation in the notebook or console
         plt.show()
 
-
     @staticmethod
     def atmosphere(atmosphere: Atmosphere, vertex: int = 0):
         fig, (ax0, ax1, ax2) = plt.subplots(1, 3, sharey='row')
         fig.set_figwidth(12.0)
 
-        ax0.plot(atmosphere.air_data.temperature[:,vertex]-273.15, atmosphere.air_data.altitudes / 1000)
+        ax0.plot(atmosphere.air_data.temperature[:, vertex] - 273.15, atmosphere.air_data.altitudes / 1000)
         ax0.set_ylabel("Altitude (km)")
         ax0.set_xlabel("Temperature (ºC)")
 
-        ax1.plot(atmosphere.air_data.pressure[:,vertex], atmosphere.air_data.altitudes / 1000)
+        ax1.plot(atmosphere.air_data.pressure[:, vertex], atmosphere.air_data.altitudes / 1000)
         ax1.set_xlabel("Pressure (Pa)")
 
-        ax2.plot(atmosphere.air_data.density[:,vertex], atmosphere.air_data.altitudes / 1000)
+        ax2.plot(atmosphere.air_data.density[:, vertex], atmosphere.air_data.altitudes / 1000)
         ax2.set_xlabel("Density (kg/m³)")
 
         plt.tight_layout()
         plt.show()
 
-
     @staticmethod
     def nop(*args, **kwargs):
         pass
-
 
     @staticmethod
     def gradient(coordinates: np.ndarray, pressure: np.ndarray, gradients: np.ndarray,
@@ -442,7 +435,6 @@ class Plot:
         plt.tight_layout()
         plt.show()
 
-
     @staticmethod
     def stream(coordinates: np.ndarray, velocity: np.ndarray, resolution: int = 360, **kwargs):
         fig, ax = plt.subplots(figsize=(12, 6))
@@ -486,7 +478,6 @@ class Plot:
         plt.tight_layout()
         plt.show()
 
-
     @staticmethod
     def interactive_map(data, coordinates, plot_type):
         """
@@ -506,9 +497,9 @@ class Plot:
         """
         title = plot_type.replace('_', ' ').title()
 
-        longitude = coordinates[...,0]
-        latitude = coordinates[...,1]
-        
+        longitude = coordinates[..., 0]
+        latitude = coordinates[..., 1]
+
         n_snapshots = data.shape[0]
         n_columns = data.shape[-1]
         data = data.reshape(n_snapshots, -1, n_columns)
@@ -598,7 +589,6 @@ class Plot:
         # Show the interactive plot
         plt.show()
 
-
     @staticmethod
     def interactive_stream(vector_field: np.ndarray, coordinates: np.ndarray, resolution: int = 360):
         """
@@ -608,9 +598,9 @@ class Plot:
         Parameters
         ----------
         vector_field : np.ndarray
-            Array of shape (n_snapshots, n_layers, n_columns, 2) where:
+            Array of shape (n_snapshots, n_layers, n_columns, 3) where:
             velocity[t, l, :, 0] gives the zonal component for the atmospheric node (t, l),
-            velocity[t, l, :, 1] gives the meridional component.
+            velocity[t, l, :, 1] gives the meridional component,
             velocity[t, l, :, 2] gives the vertical component.
         coordinates : np.ndarray
             Array of shape (n_columns, 2) where each row contains the longitude and latitude of an air column.
@@ -640,19 +630,19 @@ class Plot:
 
         # Interpolate velocity components to the grid for initial indices
         u = griddata(
-            points=coordinates[...,:2],
+            points=coordinates[..., :2],
             values=vector_field[time_idx, layer_idx, :, 0],
             xi=meshgrid,
             method='linear'
         )
         v = griddata(
-            points=coordinates[...,:2],
+            points=coordinates[..., :2],
             values=vector_field[time_idx, layer_idx, :, 1],
             xi=meshgrid,
             method='linear'
         )
         w = griddata(
-            points=coordinates[...,:2],
+            points=coordinates[..., :2],
             values=vector_field[time_idx, layer_idx, :, 2],
             xi=meshgrid,
             method='nearest'
@@ -664,7 +654,8 @@ class Plot:
         plt.subplots_adjust(left=0.25, bottom=0.25)  # Make space for sliders
 
         # Plot the initial speed as background
-        img = ax.imshow(w, extent=(-180, 180, -90, 90), origin='lower', cmap='viridis', aspect='auto', vmin=vmin, vmax=vmax)
+        img = ax.imshow(w, extent=(-180, 180, -90, 90), origin='lower', cmap='viridis', aspect='auto', vmin=vmin,
+                        vmax=vmax)
         plt.colorbar(img, ax=ax, label='Vertical Component')
 
         # Add initial streamlines
@@ -693,20 +684,21 @@ class Plot:
 
             # Interpolate velocity components to the grid for selected indices
             u = griddata(
-                points=coordinates[...,:2],
+                points=coordinates[..., :2],
                 values=vector_field[t_idx, l_idx, :, 0],
                 xi=meshgrid,
                 method='linear'
             )
             v = griddata(
-                points=coordinates[...,:2],
+                points=coordinates[..., :2],
                 values=vector_field[t_idx, l_idx, :, 1],
                 xi=meshgrid,
                 method='linear'
             )
+            # Corrected line: use t_idx and l_idx for the vertical component
             w = griddata(
-                points=coordinates[...,:2],
-                values=vector_field[time_idx, layer_idx, :, 2],
+                points=coordinates[..., :2],
+                values=vector_field[t_idx, l_idx, :, 2],
                 xi=meshgrid,
                 method='nearest'
             )
