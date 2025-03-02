@@ -1,75 +1,75 @@
 import numpy as np
 
 from src.math_utils.vector_utils import cartesian_to_polar_velocity
-from .air_data import AirData
+from .reference_atmosphere import ReferenceAtmosphere
 from .adjacency_manager import AdjacencyManager
 from src.stellar_system.planet.surface import Surface
 
 class AirFlow:
-    def __init__(self, air_data: AirData, surface: Surface, adjacency: AdjacencyManager, angular_velocity_vector: np.ndarray):
+    def __init__(self, ref: ReferenceAtmosphere, surface: Surface, adjacency: AdjacencyManager, angular_velocity_vector: np.ndarray):
         """
         Initializes the calculator with the given physical parameters.
 
-        :param air_data: Instance of the AirData class containing information about the atmosphere and its properties.
+        :param ref: Instance of the ReferenceAtmosphere class containing information about the atmosphere and its properties.
         :param surface: Instance of the Surface class representing the planetary surface and relevant surface properties.
         :param adjacency: Instance of the AdjacencyManager class representing the geometry of the atmosphere.
         :param angular_velocity_vector: numpy array representing the planetary angular velocity vector [rad/s]
         """
-        self.air_data = air_data
+        self.ref = ref
         self.surface = surface
         self.adjacency = adjacency
         self.omega = np.array(angular_velocity_vector)
 
-        self.n_layers = self.air_data.n_layers
+        self.n_layers = self.ref.n_layers
         self.n_columns = self.surface.n_vertices
         self.shape = (self.n_layers, self.n_columns)
-        self.R_specific = self.air_data.R_specific
-        self.dynamic_viscosity = self.air_data.material['dynamic_viscosity']
+        self.R_specific = self.ref.R_specific
+        self.dynamic_viscosity = self.ref.material['dynamic_viscosity']
 
         self.omega_spherical = np.stack(np.array(cartesian_to_polar_velocity(angular_velocity_vector,
                                                                             self.adjacency.cartesian)),
                                         axis=-1).reshape((self.n_layers, self.n_columns, 3))
 
         self.zonal_derivative, self.meridional_derivative, self.vertical_derivative = self.adjacency.vector_operators.partial_derivative_operators
-        self.calculate_gradient = self.adjacency.vector_operators.calculate_gradient
-        self.calculate_divergence = self.adjacency.vector_operators.calculate_divergence
-        self.calculate_curl = self.adjacency.vector_operators.calculate_curl
-        self.calculate_laplacian = self.adjacency.vector_operators.calculate_laplacian
-        self.calculate_gradient_tensor = self.adjacency.vector_operators.calculate_vector_gradient
+        self.calculate_gradient = lambda x: self.adjacency.vector_operators.calculate_gradient(x.ravel()).reshape(x.shape+(3,))
+        self.calculate_divergence = lambda x: self.adjacency.vector_operators.calculate_divergence(x.reshape((-1,3))).reshape(x.shape[:-1])
+        self.calculate_curl = lambda x: self.adjacency.vector_operators.calculate_curl(x.reshape((-1,3))).reshape(x.shape)
+        self.calculate_laplacian = lambda x: self.adjacency.vector_operators.calculate_laplacian(x.reshape((-1,3))).reshape(x.shape)
+        self.calculate_gradient_tensor = lambda x: self.adjacency.vector_operators.calculate_vector_gradient(x.reshape((-1,3))).reshape(x.shape+(3,))
 
         self.set_hydrostatic_equilibrium()
 
-        self.pressure_gradient = np.zeros((self.n_layers, self.n_columns, 3))
-        self.temperature_gradient = np.zeros((self.n_layers, self.n_columns, 3))
-        self.net_force = np.zeros((self.n_layers, self.n_columns, 3))
-
         self.velocity = np.zeros((self.n_layers, self.n_columns, 3))
-        self.temperature_rate = np.zeros_like(self.air_data.temperature)
-        self.density_rate = np.zeros_like(self.air_data.density)
-        self.velocity_divergence = np.zeros((self.n_layers, self.n_columns))
-        self.velocity_laplacian = np.zeros((self.n_layers, self.n_columns, 3))
-        self.velocity_gradient_tensor = np.zeros((self.n_layers, self.n_columns, 3, 3))
+
+        self.temperature_prt = np.zeros_like(self.ref.temperature)
+        self.pressure_prt = np.zeros_like(self.ref.pressure)
+        self.density_prt = np.zeros_like(self.ref.density)
 
         # Damping coefficients
         self.nu_div = 1e-1         # Divergence damping coefficient
-        self.alpha_rayleigh = 1e-1 * (self.air_data.altitudes - self.air_data.altitudes[0]) / (
-            self.air_data.altitudes[-1] - self.air_data.altitudes[0]
+        self.alpha_rayleigh = 1e-1 * (self.ref.altitude - self.ref.altitude[0]) / (
+                self.ref.altitude[-1] - self.ref.altitude[0]
         ) # Rayleigh friction coefficient
 
 
+    @property
+    def temperature(self):
+        return self.ref.temperature + self.temperature_prt
+    
+    @property
+    def pressure(self):
+        return self.ref.pressure + self.pressure_prt
+    
+    @property
+    def density(self):
+        return self.ref.density + self.density_prt
+    
+
     def set_hydrostatic_equilibrium(self):
-        dpdh = self.vertical_derivative.dot(self.air_data.pressure.ravel()).reshape(self.air_data.pressure.shape)
-        self.air_data.density = -dpdh / self.air_data.g
+        dpdh = self.vertical_derivative.dot(self.ref.pressure.ravel()).reshape(self.ref.pressure.shape)
+        self.ref.density = -dpdh / self.ref.g
 
-        self.air_data.temperature = self.air_data.pressure / (self.air_data.density * self.R_specific)
-
-
-    def update_gradients(self):
-        self.pressure_gradient = self.calculate_gradient(self.air_data.pressure.ravel()).reshape(self.shape + (3,))
-        self.temperature_gradient = self.calculate_gradient(self.air_data.temperature.ravel()).reshape(self.shape + (3,))
-        self.velocity_divergence = self.calculate_divergence(self.velocity.reshape((-1,3))).reshape(self.shape)
-        self.velocity_laplacian = self.calculate_laplacian(self.velocity)
-        # self.velocity_gradient_tensor = self.calculate_gradient_tensor(self.velocity)
+        self.ref.temperature = self.ref.pressure / (self.ref.density * self.R_specific)
 
 
     def rk4_step(self, delta_t):
@@ -78,8 +78,8 @@ class AirFlow:
         """
         # Save the current state
         v0 = self.velocity.copy()  # shape: (n_layers, n_columns, 3)
-        T0 = self.air_data.temperature.copy()  # shape: (n_layers, n_columns)
-        rho0 = self.air_data.density.copy()  # shape: (n_layers, n_columns)
+        T0 = self.temperature  # shape: (n_layers, n_columns)
+        rho0 = self.density  # shape: (n_layers, n_columns)
 
         # Compute RK4 coefficients (k1, k2, k3, k4)
         # --------------------------------------------
@@ -107,16 +107,11 @@ class AirFlow:
         # Combine the coefficients to update the state
         # ----------------------------------------------
         self.velocity = v0 + (delta_t / 6.0) * (dv1 + 2.0 * dv2 + 2.0 * dv3 + dv4)
-        self.air_data.temperature = T0 + (delta_t / 6.0) * (dT1 + 2.0 * dT2 + 2.0 * dT3 + dT4)
-        self.air_data.density = rho0 + (delta_t / 6.0) * (dRho1 + 2.0 * dRho2 + 2.0 * dRho3 + dRho4)
-
-        # Mass conservation
-        total_mass_before = np.sum(rho0)
-        total_mass_after = np.sum(self.air_data.density)
-        self.air_data.density *= (total_mass_before / total_mass_after)
+        self.temperature_prt = T0 + (delta_t / 6.0) * (dT1 + 2.0 * dT2 + 2.0 * dT3 + dT4) - self.ref.temperature
+        self.density_prt = rho0 + (delta_t / 6.0) * (dRho1 + 2.0 * dRho2 + 2.0 * dRho3 + dRho4) - self.ref.density
 
         # Update pressure using the ideal gas law
-        self.air_data.pressure = self.air_data.density * self.R_specific * self.air_data.temperature
+        self.pressure_prt = self.density * self.R_specific * self.temperature - self.ref.pressure
 
         # No-slip boundary conditions
         self.velocity[0] = 0.0  # No-slip at the surface
@@ -139,10 +134,10 @@ class AirFlow:
         """
         # Compute gradients and forces based on the input state
         pressure = density * self.R_specific * temperature
-        pressure_gradient = self.calculate_gradient(pressure.ravel()).reshape(self.shape + (3,))
-        geopotential_gradient = self.calculate_gradient(self.air_data.geopotential.ravel()).reshape(self.shape + (3,))
-        temperature_gradient = self.calculate_gradient(temperature.ravel()).reshape(self.shape + (3,))
-        velocity_divergence = self.calculate_divergence(velocity.reshape((-1, 3))).reshape(self.shape)
+        pressure_gradient = self.calculate_gradient(pressure)
+        geopotential_gradient = self.calculate_gradient(self.ref.geopotential)
+        temperature_gradient = self.calculate_gradient(temperature)
+        velocity_divergence = self.calculate_divergence(velocity)
         velocity_laplacian = self.calculate_laplacian(velocity)
 
         # Compute net forces
@@ -154,8 +149,8 @@ class AirFlow:
         viscous_force = self.dynamic_viscosity * velocity_laplacian
         net_force = gradient_force + weight + coriolis_force + viscous_force
 
-        self.velocity_gradient_tensor = self.calculate_gradient_tensor(self.velocity)
-        convective_acceleration = np.einsum('...j,...ij->...i', self.velocity, self.velocity_gradient_tensor)
+        velocity_gradient_tensor = self.calculate_gradient_tensor(velocity)
+        convective_acceleration = np.einsum('...j,...ij->...i', velocity, velocity_gradient_tensor)
 
         # Compute tendencies
         is_air = (density > 1e-9)

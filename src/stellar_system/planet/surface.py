@@ -145,6 +145,3 @@ class Surface(GeodesicGrid):
     @property
     def temperature(self):
         return self.subsurface_temperature[0]
-
-    # def update_temperature(self, delta_t: float):
-    #     self.temperature += delta_t * self.surface_heat_flux() / self.heat_capacity

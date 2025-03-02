@@ -47,7 +47,7 @@ class Planet(CelestialBody):
         if 'surface_pressure' in atmosphere_data and atmosphere_data['surface_pressure'] > 0.0:
             self.is_airless = False
             self.atmosphere = Atmosphere(self.surface, self.mass, self.angular_velocity, atmosphere_data)
-            self.surface.f_GH = self.atmosphere.air_data.f_GH
+            self.surface.f_GH = self.atmosphere.ref.f_GH
 
         self.sunlight = self.position / np.linalg.norm(self.position)
 
@@ -59,12 +59,13 @@ class Planet(CelestialBody):
                 'temperature': self.surface.temperature,
                 'subsurface_temperature': self.surface.subsurface_temperature,
                 'heat_capacity': self.surface.surface_heat_flux,
-                'air_temperature': self.atmosphere.air_data.temperature,
-                'pressure': self.atmosphere.air_data.pressure,
-                'density': self.atmosphere.air_data.density,
-                'velocity': self.atmosphere.air_flow.velocity,
-                'pressure_gradient': self.atmosphere.air_flow.pressure_gradient,
-                'velocity_divergence': self.atmosphere.air_flow.velocity_divergence
+                'air_temperature': self.atmosphere.air_flow.temperature,
+                'pressure': self.atmosphere.air_flow.pressure,
+                'density': self.atmosphere.air_flow.density,
+                'air_temperature_prt': self.atmosphere.air_flow.temperature_prt,
+                'pressure_prt': self.atmosphere.air_flow.pressure_prt,
+                'density_prt': self.atmosphere.air_flow.density_prt,
+                'velocity': self.atmosphere.air_flow.velocity
             }
         else:
             return {
@@ -78,7 +79,9 @@ class Planet(CelestialBody):
 
     def update(self, delta_t: float, star: Star):
         self.update_sunlight(delta_t, star)
-        self.update_temperature(delta_t)
+        self.surface.update_temperature(delta_t)
+        if not self.is_airless:
+            self.atmosphere.update(delta_t)
 
 
     def update_sunlight(self, delta_t: float, star: Star):
@@ -98,9 +101,3 @@ class Planet(CelestialBody):
         self.sunlight = np.dot(self.sunlight, self.axial_tilt_matrix)
 
         self.surface.update_irradiance(self.sunlight)
-
-
-    def update_temperature(self, delta_t: float):
-        self.surface.update_temperature(delta_t)
-        if not self.is_airless:
-            self.atmosphere.update(delta_t)

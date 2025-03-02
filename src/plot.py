@@ -33,10 +33,10 @@ class Plot:
             latitude = coordinates[..., 1]
             longitude = coordinates[..., 0]
             coordinates = np.stack([latitude, longitude], axis=-1)
-            pressure = planet.atmosphere.air_data.pressure[layer_idx]
+            pressure = planet.atmosphere.ref.pressure[layer_idx]
             args = (coordinates, pressure)
-            min_altitude = np.amin(planet.atmosphere.air_data.altitudes[layer_idx])
-            max_altitude = np.amax(planet.atmosphere.air_data.altitudes[layer_idx])
+            min_altitude = np.amin(planet.atmosphere.ref.altitude[layer_idx])
+            max_altitude = np.amax(planet.atmosphere.ref.altitude[layer_idx])
             kwargs[
                 'title'] = f'Air pressure (Pa) between {min_altitude / 1000:.2f} and {max_altitude / 1000:.2f} km high'
             self.func = self.worldmap
@@ -46,10 +46,10 @@ class Plot:
             latitude = coordinates[..., 1]
             longitude = coordinates[..., 0]
             coordinates = np.stack([latitude, longitude], axis=-1)
-            density = planet.atmosphere.air_data.density[layer_idx]
+            density = planet.atmosphere.ref.density[layer_idx]
             args = (coordinates, density)
-            min_altitude = np.amin(planet.atmosphere.air_data.altitudes[layer_idx])
-            max_altitude = np.amax(planet.atmosphere.air_data.altitudes[layer_idx])
+            min_altitude = np.amin(planet.atmosphere.ref.altitude[layer_idx])
+            max_altitude = np.amax(planet.atmosphere.ref.altitude[layer_idx])
             kwargs[
                 'title'] = f'Air density (kg/m³) between {min_altitude / 1000:.2f} and {max_altitude / 1000:.2f} km high'
             self.func = self.worldmap
@@ -59,10 +59,10 @@ class Plot:
             latitude = coordinates[..., 1]
             longitude = coordinates[..., 0]
             coordinates = np.stack([latitude, longitude], axis=-1)
-            temperature = planet.atmosphere.air_data.temperature[layer_idx] - 273.15
+            temperature = planet.atmosphere.ref.temperature[layer_idx] - 273.15
             args = (coordinates, temperature)
-            min_altitude = np.amin(planet.atmosphere.air_data.altitudes[layer_idx])
-            max_altitude = np.amax(planet.atmosphere.air_data.altitudes[layer_idx])
+            min_altitude = np.amin(planet.atmosphere.ref.altitude[layer_idx])
+            max_altitude = np.amax(planet.atmosphere.ref.altitude[layer_idx])
             kwargs[
                 'title'] = f'Temperature (ºC) between {min_altitude / 1000:.2f} and {max_altitude / 1000:.2f} km high'
             kwargs['cmap'] = 'plasma'
@@ -74,10 +74,10 @@ class Plot:
             latitude = coordinates[..., 1]
             longitude = coordinates[..., 0]
             coordinates = np.stack([latitude, longitude], axis=-1)
-            pressure = planet.atmosphere.air_data.pressure[layer_idx]
+            pressure = planet.atmosphere.ref.pressure[layer_idx]
             pressure_gradient = planet.atmosphere.air_flow.pressure_gradient[layer_idx]
             args = (coordinates, pressure, pressure_gradient)
-            altitude = planet.atmosphere.air_data.altitudes[layer_idx]
+            altitude = planet.atmosphere.ref.altitude[layer_idx]
             kwargs['title'] = f'Pressure Gradient at {altitude / 1000:.2f} km high'
             self.func = self.gradient
 
@@ -165,8 +165,8 @@ class Plot:
             coordinates = np.stack([latitude, longitude], axis=-1)
             velocity = planet.atmosphere.air_flow.velocity[layer_idx]
             args = (coordinates, velocity)
-            min_altitude = np.amin(planet.atmosphere.air_data.altitudes[layer_idx])
-            max_altitude = np.amax(planet.atmosphere.air_data.altitudes[layer_idx])
+            min_altitude = np.amin(planet.atmosphere.ref.altitude[layer_idx])
+            max_altitude = np.amax(planet.atmosphere.ref.altitude[layer_idx])
             kwargs[
                 'title'] = f'Streamlines of air flow between {min_altitude / 1000:.2f} and {max_altitude / 1000:.2f} km high'
             self.func = self.stream
@@ -356,14 +356,14 @@ class Plot:
         fig, (ax0, ax1, ax2) = plt.subplots(1, 3, sharey='row')
         fig.set_figwidth(12.0)
 
-        ax0.plot(atmosphere.air_data.temperature[:, vertex] - 273.15, atmosphere.air_data.altitudes / 1000)
+        ax0.plot(atmosphere.air_data.temperature[:, vertex] - 273.15, atmosphere.air_data.altitude / 1000)
         ax0.set_ylabel("Altitude (km)")
         ax0.set_xlabel("Temperature (ºC)")
 
-        ax1.plot(atmosphere.air_data.pressure[:, vertex], atmosphere.air_data.altitudes / 1000)
+        ax1.plot(atmosphere.air_data.pressure[:, vertex], atmosphere.air_data.altitude / 1000)
         ax1.set_xlabel("Pressure (Pa)")
 
-        ax2.plot(atmosphere.air_data.density[:, vertex], atmosphere.air_data.altitudes / 1000)
+        ax2.plot(atmosphere.air_data.density[:, vertex], atmosphere.air_data.altitude / 1000)
         ax2.set_xlabel("Density (kg/m³)")
 
         plt.tight_layout()

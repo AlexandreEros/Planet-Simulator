@@ -4,7 +4,8 @@ from scipy.interpolate import interp1d
 
 from src.stellar_system.planet.surface import Surface
 
-class AirData:
+
+class ReferenceAtmosphere:
     def __init__(self, surface: Surface, planet_mass: float, material: dict, atmosphere_data: dict):
         # Initialize layer properties
         self.surface = surface
@@ -30,25 +31,25 @@ class AirData:
         scale_height_0 = self.R_specific * self.T0 / self.g0
         self.top_geopotential = -np.log(1e-2) * scale_height_0  # Height where pressure drops to 1% of its value at the surface
         self.bottom = np.amin(self.surface.elevation)
-        self.altitudes = self.surface.elevation + (self.top_geopotential-surface.elevation) * np.linspace(
+        self.altitude = self.surface.elevation + (self.top_geopotential - surface.elevation) * np.linspace(
             np.zeros(self.surface.elevation.shape),
             np.ones(self.surface.elevation.shape),
             num=self.n_layers
         ) ** 2
-        self.g = self.grav(self.altitudes)  # Gravity at all altitudes
-        self.geopotential = constants.G * planet_mass * (-1 / (self.altitudes + self.surface.radius) + 1 / self.surface.radius)
+        self.g = self.grav(self.altitude)  # Gravity at all altitudes
+        self.geopotential = constants.G * planet_mass * (-1 / (self.altitude + self.surface.radius) + 1 / self.surface.radius)
         self.all_altitudes = np.linspace(self.bottom, self.top_geopotential, num=50).reshape((-1,1))
 
         self.coordinates = np.zeros((self.n_layers, self.n_columns, 3))
         for layer_idx in range(self.n_layers):
             self.coordinates[layer_idx] = self.surface.coordinates  # longitude and latitude
-            self.coordinates[layer_idx, :, 2] = self.altitudes[layer_idx]  # altitude
+            self.coordinates[layer_idx, :, 2] = self.altitude[layer_idx]  # altitude
 
         self.all_temperatures = self.T0 + self.lapse_rate * self.all_altitudes
         self.all_pressures = self.get_all_pressures(self.all_altitudes)
         self.all_densities = self.get_density(self.all_temperatures, self.all_pressures)
         
-        self.temperature = self.T0 + self.lapse_rate * self.altitudes
+        self.temperature = self.T0 + self.lapse_rate * self.altitude
         # self.pressure = self.get_pressure(self.temperature)
         # Interpolate pressures from self.all_pressures to self.altitudes
         interpolate_pressure = interp1d(
@@ -57,7 +58,7 @@ class AirData:
             kind='linear',
             fill_value="extrapolate"
         )
-        self.pressure = np.array(interpolate_pressure(self.altitudes))
+        self.pressure = np.array(interpolate_pressure(self.altitude))
         self.density = self.get_density(self.temperature, self.pressure)
 
 

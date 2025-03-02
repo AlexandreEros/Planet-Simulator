@@ -1,7 +1,7 @@
 import numpy as np
 
 from src.stellar_system.planet.surface import  Surface
-from .air_data import AirData
+from .reference_atmosphere import ReferenceAtmosphere
 from .thermodynamics import Thermodynamics
 from .adjacency_manager import AdjacencyManager
 from .air_flow import AirFlow
@@ -16,22 +16,14 @@ class Atmosphere:
 
         self.material = Materials.load(self.atmosphere_data['material_name'])
 
-        self.air_data = AirData(self.surface, self.planet_mass, self.material, self.atmosphere_data)
-        self.adjacency_manager = AdjacencyManager(self.air_data, self.surface.adjacency_matrix)
-        self.air_flow = AirFlow(self.air_data, self.surface, self.adjacency_manager, self.omega)
+        self.ref = ReferenceAtmosphere(self.surface, self.planet_mass, self.material, self.atmosphere_data)
+        self.adjacency_manager = AdjacencyManager(self.ref, self.surface.adjacency_matrix)
+        self.air_flow = AirFlow(self.ref, self.surface, self.adjacency_manager, self.omega)
 
-        self.laplacian_matrix = self.adjacency_manager.laplacian_matrix
-
-        self.thermodynamics = Thermodynamics(self.air_data, self.adjacency_manager, self.surface, self.material)
+        self.thermodynamics = Thermodynamics(self.air_flow, self.ref, self.adjacency_manager, self.surface, self.material)
 
 
     def update(self, delta_t):
-        self.thermodynamics.set_heat_from_surface()
-        self.thermodynamics.set_temperature_rate()
-
         self.thermodynamics.exchange_heat_with_surface(delta_t)
         self.thermodynamics.conduct_heat(delta_t)
         self.air_flow.rk4_step(delta_t)
-
-        self.thermodynamics.set_heat_from_surface()
-        self.thermodynamics.set_temperature_rate()
