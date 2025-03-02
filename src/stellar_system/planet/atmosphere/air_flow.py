@@ -51,7 +51,7 @@ class AirFlow:
         self.velocity_gradient_tensor = np.zeros((self.n_layers, self.n_columns, 3, 3))
 
         # Damping coefficients
-        self.nu_div = 1e-2         # Divergence damping coefficient
+        self.nu_div = 1e-1         # Divergence damping coefficient
         self.alpha_rayleigh = 1e-1 * (self.air_data.altitudes - self.air_data.altitudes[0]) / (
             self.air_data.altitudes[-1] - self.air_data.altitudes[0]
         ) # Rayleigh friction coefficient
@@ -116,14 +116,7 @@ class AirFlow:
         self.air_data.density *= (total_mass_before / total_mass_after)
 
         # Update pressure using the ideal gas law
-        old_pressure = self.air_data.pressure.copy()
         self.air_data.pressure = self.air_data.density * self.R_specific * self.air_data.temperature
-
-        # Omega equation for vertical flow
-        omega = (self.air_data.pressure - old_pressure) / delta_t
-        self.velocity[..., 2] = omega / (self.air_data.density * self.air_data.g)
-        self.velocity[..., 2] = np.fmin(self.velocity[..., 2], 1.0)
-        self.velocity[..., 2] = np.fmax(self.velocity[..., 2], -1.0)
 
         # No-slip boundary conditions
         self.velocity[0] = 0.0  # No-slip at the surface
@@ -147,13 +140,14 @@ class AirFlow:
         # Compute gradients and forces based on the input state
         pressure = density * self.R_specific * temperature
         pressure_gradient = self.calculate_gradient(pressure.ravel()).reshape(self.shape + (3,))
+        geopotential_gradient = self.calculate_gradient(self.air_data.geopotential.ravel()).reshape(self.shape + (3,))
         temperature_gradient = self.calculate_gradient(temperature.ravel()).reshape(self.shape + (3,))
         velocity_divergence = self.calculate_divergence(velocity.reshape((-1, 3))).reshape(self.shape)
         velocity_laplacian = self.calculate_laplacian(velocity)
 
         # Compute net forces
         gradient_force = -pressure_gradient
-        weight = density[..., None] * self.air_data.g[..., None] * np.array([0.0, 0.0, -1.0])
+        weight = -density[..., None] * geopotential_gradient
         vel_without_z = np.zeros(velocity.shape)
         vel_without_z[..., :2] = velocity[..., :2]
         coriolis_force = -2 * density[..., None] * np.cross(self.omega_spherical, vel_without_z)
@@ -179,4 +173,3 @@ class AirFlow:
         dRhodt = -density * velocity_divergence
 
         return dvdt, dTdt, dRhodt
-

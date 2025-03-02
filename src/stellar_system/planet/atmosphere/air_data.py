@@ -36,6 +36,7 @@ class AirData:
             num=self.n_layers
         ) ** 2
         self.g = self.grav(self.altitudes)  # Gravity at all altitudes
+        self.geopotential = constants.G * planet_mass * (-1 / (self.altitudes + self.surface.radius) + 1 / self.surface.radius)
         self.all_altitudes = np.linspace(self.bottom, self.top_geopotential, num=50).reshape((-1,1))
 
         self.coordinates = np.zeros((self.n_layers, self.n_columns, 3))
