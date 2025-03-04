@@ -10,56 +10,61 @@ class ReferenceAtmosphere:
         # Initialize layer properties
         self.surface = surface
         self.planet_mass = planet_mass
+        self.atmosphere_data = atmosphere_data
 
         self.n_layers = atmosphere_data.get('n_layers', 16)
         self.n_columns = self.surface.n_vertices
+        self.shape = (self.n_layers, self.n_columns)
         
         self.material = material
-        self.molar_mass = 0.02896 if 'molar_mass' not in self.material else self.material['molar_mass']
+        self.molar_mass = self.material.get('molar_mass', 0.02896)
         self.cp = self.material['isobaric_mass_heat_capacity']
+        self.R_specific = constants.R / self.material['molar_mass']  # Specific gas constant (J/kg·K)
 
-        self.surface_pressure = 0.0 if 'surface_pressure' not in atmosphere_data else atmosphere_data['surface_pressure']
-        self.k_GH = 1e-5 if 'greenhouse_efficiency' not in atmosphere_data else atmosphere_data['greenhouse_efficiency']
-        self.chi_CO2 = 1.0 if 'chi_CO2' not in atmosphere_data else atmosphere_data['chi_CO2']  # CO2 dominance
+        self.surface_pressure = self.atmosphere_data.get('surface_pressure', 0.0)
+        self.k_GH = self.atmosphere_data.get('greenhouse_efficiency', 1e-5)
+        self.chi_CO2 = self.atmosphere_data.get('chi_CO2', 1.0)  # CO2 dominance
         self.f_GH = self.k_GH * self.surface_pressure * (self.chi_CO2 / self.molar_mass)  # Greenhouse factor
 
-        self.R_specific = constants.R / self.material['molar_mass']  # Specific gas constant (J/kg·K)
         self.g0 = self.grav(0)
         self.lapse_rate = -self.g0 / self.cp  # Adiabatic dry lapse rate as a function of geopotential altitude
-        self.T0 = np.mean(self.surface.temperature) # Blackbody temperature of the planet, and initial temperature of the surface
+        self.T0 = self.surface.blackbody_temperature # Initial temperature of the surface
 
         scale_height_0 = self.R_specific * self.T0 / self.g0
         self.top_geopotential = -np.log(1e-2) * scale_height_0  # Height where pressure drops to 1% of its value at the surface
         self.bottom = np.amin(self.surface.elevation)
-        self.altitude = self.surface.elevation + (self.top_geopotential - surface.elevation) * np.linspace(
-            np.zeros(self.surface.elevation.shape),
-            np.ones(self.surface.elevation.shape),
-            num=self.n_layers
-        ) ** 2
-        self.g = self.grav(self.altitude)  # Gravity at all altitudes
-        self.geopotential = constants.G * planet_mass * (-1 / (self.altitude + self.surface.radius) + 1 / self.surface.radius)
         self.all_altitudes = np.linspace(self.bottom, self.top_geopotential, num=50).reshape((-1,1))
-
-        self.coordinates = np.zeros((self.n_layers, self.n_columns, 3))
-        for layer_idx in range(self.n_layers):
-            self.coordinates[layer_idx] = self.surface.coordinates  # longitude and latitude
-            self.coordinates[layer_idx, :, 2] = self.altitude[layer_idx]  # altitude
-
         self.all_temperatures = self.T0 + self.lapse_rate * self.all_altitudes
         self.all_pressures = self.get_all_pressures(self.all_altitudes)
         self.all_densities = self.get_density(self.all_temperatures, self.all_pressures)
-        
-        self.temperature = self.T0 + self.lapse_rate * self.altitude
-        # self.pressure = self.get_pressure(self.temperature)
-        # Interpolate pressures from self.all_pressures to self.altitudes
-        interpolate_pressure = interp1d(
-            self.all_altitudes.flatten(),  # Flatten to ensure 1D array for interpolation
-            self.all_pressures.flatten(),
-            kind='linear',
-            fill_value="extrapolate"
+
+        self.z_to_p = interp1d(
+            self.all_altitudes.flatten(),
+            self.all_pressures.flatten()
         )
-        self.pressure = np.array(interpolate_pressure(self.altitude))
+        self.p_to_z = interp1d(
+            self.all_pressures.flatten(),
+            self.all_altitudes.flatten()
+        )
+
+        self.layer_pressure_boundaries = np.linspace(
+            self.z_to_p(self.surface.elevation),
+            0.0,
+            num=self.n_layers + 1,
+            axis=0
+        )
+        self.layer_boundaries = self.p_to_z(self.layer_pressure_boundaries)
+        self.layer_thickness = self.layer_boundaries[1:] - self.layer_boundaries[:-1]
+
+        self.pressure = (self.layer_pressure_boundaries[:-1] + self.layer_pressure_boundaries[1:]) / 2
+        self.altitude = self.p_to_z(self.pressure)
+        self.g = self.grav(self.altitude)
+        self.geopotential = constants.G * planet_mass * (-1 / (self.altitude + self.surface.radius) + 1 / self.surface.radius)
+        self.temperature = self.T0 + self.lapse_rate * self.altitude
         self.density = self.get_density(self.temperature, self.pressure)
+
+        self.coordinates = np.tile(self.surface.coordinates, (self.n_layers, 1, 1))
+        self.coordinates[..., 2] = self.altitude
 
 
     def get_all_pressures(self, all_altitudes) -> np.ndarray:

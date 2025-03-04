@@ -36,7 +36,7 @@ class Thermodynamics:
         ) * delta_t
 
         # Update atmospheric temperature
-        atmospheric_layer_thickness = self.ref.altitude[1] - self.ref.altitude[0]
+        atmospheric_layer_thickness = self.ref.layer_thickness[0]
         self.air_flow.temperature_prt[0] += heat_flux_from_surface / (
                         self.ref.density[0] * specific_heat_air * atmospheric_layer_thickness * area
         ) * delta_t
@@ -52,7 +52,7 @@ class Thermodynamics:
 
         # D = diag(k/(ρcp)), where ρ varies by cell.
         density_flat = np.where(self.ref.density>0, self.ref.density, 1.0).ravel()
-        D = sparse.diags(k_air / (density_flat * cp_air))
+        D = sparse.diags(k_air / (density_flat * self.ref.layer_thickness.flatten() * cp_air))
 
         T_flat = self.ref.temperature.ravel()
         temperature_rate = D.dot(self.adjacency.laplacian_matrix.dot(T_flat))

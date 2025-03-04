@@ -14,11 +14,12 @@ class AdjacencyManager:
         self.n_columns = self.ref.n_columns
         self.atmosphere_shape = (self.n_layers, self.n_columns)
 
-        self.latitude = np.full(self.atmosphere_shape, fill_value=self.ref.surface.latitude)
-        self.longitude = np.full(self.atmosphere_shape, fill_value=self.ref.surface.longitude)
+        self.polar_coordinates = self.ref.coordinates
+        self.longitude = self.polar_coordinates[..., 0]
+        self.latitude = self.polar_coordinates[..., 1]
         self.radius = self.ref.surface.radius + self.ref.altitude
-        self.coordinates = np.stack([self.longitude.ravel(), self.latitude.ravel(), self.radius.ravel()], axis=-1)
-        self.cartesian = spherical_to_cartesian(self.coordinates)
+        self.polar_coordinates[..., 2] = self.radius
+        self.cartesian = spherical_to_cartesian(self.polar_coordinates)
 
         self.adjacency_matrix = self.build_layered_adjacency_matrix(horizontal_adjacency_matrix)
         self.vector_operators = VectorOperatorsSpherical(self.longitude.ravel(), self.latitude.ravel(), self.radius.ravel(), self.adjacency_matrix)
