@@ -171,7 +171,9 @@ class AirFlow:
         # Rayleigh friction
         dvdt[is_air] += - self.alpha_rayleigh[is_air][...,None] * velocity[is_air]
 
-        dTdt = -np.einsum('...i,...i->...', velocity, temperature_gradient)
+        adiabatic_cooling = (self.ref.g / self.ref.cp) * np.einsum('...i,...i', velocity, geopotential_gradient / self.ref.g0)
+        dTdt = np.einsum('...i,...i', velocity, temperature_gradient) + adiabatic_cooling
+
         dRhodt = -density * velocity_divergence
 
         return dvdt, dTdt, dRhodt
