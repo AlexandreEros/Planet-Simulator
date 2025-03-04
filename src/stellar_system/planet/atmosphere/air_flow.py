@@ -72,6 +72,19 @@ class AirFlow:
         self.ref.temperature = self.ref.pressure / (self.ref.density * self.R_specific)
 
 
+    def update(self, delta_t):
+        self.rk4_step(delta_t)
+
+        # Update pressure using the ideal gas law
+        self.pressure_prt = self.density * self.R_specific * self.temperature - self.ref.pressure
+
+        # Filtering vertical component
+        self.velocity[..., 2] = self.vertical_spectral_filter(self.velocity[..., 2], 0.3)
+
+        # No-slip boundary conditions
+        self.velocity[0] = 0.0  # No-slip at the surface
+
+
     def rk4_step(self, delta_t):
         """
         Perform one 4th-order Runge-Kutta step to update velocity, temperature, and density.
@@ -109,13 +122,6 @@ class AirFlow:
         self.velocity = v0 + (delta_t / 6.0) * (dv1 + 2.0 * dv2 + 2.0 * dv3 + dv4)
         self.temperature_prt = T0 + (delta_t / 6.0) * (dT1 + 2.0 * dT2 + 2.0 * dT3 + dT4) - self.ref.temperature
         self.density_prt = rho0 + (delta_t / 6.0) * (dRho1 + 2.0 * dRho2 + 2.0 * dRho3 + dRho4) - self.ref.density
-
-        # Update pressure using the ideal gas law
-        self.pressure_prt = self.density * self.R_specific * self.temperature - self.ref.pressure
-
-        # No-slip boundary conditions
-        self.velocity[0] = 0.0  # No-slip at the surface
-
 
 
     def get_tendencies(self, velocity, temperature, density):
@@ -160,6 +166,7 @@ class AirFlow:
         # Divergence damping
         grad_divergence = self.calculate_gradient(velocity_divergence.ravel()).reshape(self.shape + (3,))
         dvdt[is_air] += - self.nu_div * grad_divergence[is_air]
+        dvdt[..., 2] += - self.nu_div * grad_divergence[..., 2]  # Stronger damping in vertical
 
         # Rayleigh friction
         dvdt[is_air] += - self.alpha_rayleigh[is_air][...,None] * velocity[is_air]
@@ -168,3 +175,28 @@ class AirFlow:
         dRhodt = -density * velocity_divergence
 
         return dvdt, dTdt, dRhodt
+
+
+    @staticmethod
+    def vertical_spectral_filter(field, cutoff=0.2):
+        """
+        Applies a spectral filter to remove high-frequency vertical oscillations.
+
+        :param field: 3D numpy array (n_layers, n_columns)
+        :param cutoff: Fraction of max wavenumber to retain
+        :return: Filtered field
+        """
+        # Take 1D FFT in the vertical direction
+        field_fft = np.fft.fft(field, axis=0)
+
+        # Create vertical wavenumber grid
+        nz = field.shape[0]
+        kz = np.fft.fftfreq(nz) * 2 * np.pi  # Vertical wavenumbers
+
+        # Apply filter (zero out high wavenumbers)
+        filter_mask = np.abs(kz) < cutoff * np.max(kz)
+        field_fft_filtered = field_fft * filter_mask[:, None]
+
+        # Inverse FFT to get back to physical space
+        field_filtered = np.fft.ifft(field_fft_filtered, axis=0).real
+        return field_filtered

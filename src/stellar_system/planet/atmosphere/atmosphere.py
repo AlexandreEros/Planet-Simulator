@@ -26,4 +26,4 @@ class Atmosphere:
     def update(self, delta_t):
         self.thermodynamics.exchange_heat_with_surface(delta_t)
         self.thermodynamics.conduct_heat(delta_t)
-        self.air_flow.rk4_step(delta_t)
+        self.air_flow.update(delta_t)
