@@ -27,7 +27,7 @@
                 "sidereal_day": 5.067e6,
                 "axial_tilt_deg": 0.034,
                 "ecliptic_longitude_of_north_pole_deg": -78.98,
-                "subsolar_point_longitude": -60.0
+                "subsolar_point_longitude": -30.0
             },
             "color": "gray",
             "surface_data": {
@@ -123,7 +123,8 @@
             "rotation_data": {
                 "sidereal_day": 8.86427e4,
                 "axial_tilt_deg": 25.19,
-                "ecliptic_longitude_of_north_pole_deg": -1.47
+                "ecliptic_longitude_of_north_pole_deg": -1.47,
+                "subsolar_point_longitude": 90.0
             },
             "color": "#b7410e",
             "surface_data": {
@@ -131,15 +132,15 @@
                 "radius": 3.3895e6,
                 "noise_scale": 2.0,
                 "noise_octaves": 5,
-                "noise_amplitude": 0.005,
+                "noise_amplitude": 0.0,
                 "noise_bias": 1.0,
                 "bond_albedo": 0.25,
                 "material_name": "Martian Regolith"
             },
             "atmosphere_data": {
                 "surface_pressure": 610,
-                "n_layers": 8,
-                "greenhouse_efficiency": 8.4e-5,
+                "n_layers": 10,
+                "greenhouse_efficiency": 1e-5,
                 "chi_CO2": 1.0,
                 "material_name": "Martian Atmosphere"
             }

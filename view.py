@@ -3,7 +3,7 @@ import json
 
 from src.plot import Plot
 from src.simulation import Simulation
-from src.models.planetary.surface import Surface
+from src.stellar_system.planet.surface import Surface
 from run import default_bodies
 
 def view():
@@ -21,7 +21,7 @@ def view():
         if len(sys.argv) > 3:
             idx = int(sys.argv[3])
         if len(sys.argv) > 4:
-            duration = int(sys.argv[4])
+            duration = int(float(sys.argv[4]))
         if len(sys.argv) > 5:
             timestep = float(sys.argv[5])
         if len(sys.argv) > 6:
@@ -40,8 +40,10 @@ def view():
             surface_data = planet_data['surface_data']
             surface_data['blackbody_temperature'] = 123 # Who cares
         args=(Surface(**surface_data),)
-    elif plot_type in ('atmosphere', 'pressure', 'density', 'air_temperature'):
-        sim = Simulation(plot_type, planet_name, duration, timestep, timestep, default_bodies)
+
+    elif plot_type in ('atmosphere', 'pressure', 'density', 'air_temperature', 'pressure_gradient', 'velocity'):
+        sim = Simulation(plot_type, planet_name, default_bodies)
+        sim.run(duration, timestep, timestep)
         args = (sim.planet, idx)
 
     Plot(plot_type, *args)

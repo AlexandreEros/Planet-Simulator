@@ -1,9 +1,10 @@
 import numpy as np
 import json
 
+from .celestial_body import CelestialBody
 from .star import Star
 from .planet import Planet
-from .satellite import Satellite
+from .planet import Satellite
 
 class StellarSystem:
     def __init__(self, planet_name: str, body_file: str, G: float):
@@ -11,9 +12,10 @@ class StellarSystem:
         self.body_file = body_file
         self.G = G
 
-        self.planet = None
-        self.bodies: list[Star | Planet] = []
-        self.load_bodies_from_file()  # Initializes both of the empty attributes above
+        self.planet: Planet
+        self.star: Star
+        self.bodies: list[CelestialBody] = []
+        self.load_bodies_from_file()  # Builds the list of celestial bodies
 
     def load_bodies_from_file(self):
         """Load celestial bodies from a JSON file and add them to the system."""
@@ -23,34 +25,40 @@ class StellarSystem:
                 if body_data['name'] != self.planet_name and 'surface_data' in body_data:
                     body_data['surface_data']['resolution'] = 0
                     body_data['atmosphere_data'] = {}
-                self.add_body(**body_data)
 
-    @property
-    def idx(self) -> dict[str, int]:
-        return {self.bodies[i].name: i for i in range(len(self.bodies))}
+                new_body = self.build_body(body_data)
+                self.bodies.append(new_body)
 
-    def add_body(self, **kwargs) -> None:
+                if body_data['name'] == self.planet_name:
+                    self.planet = new_body
+                if body_data['body_type'] == 'star':
+                    self.star = new_body
+
+
+    def build_body(self, kwargs: dict) -> CelestialBody:
         for kw in kwargs:
             if isinstance(kwargs[kw], list):
                 kwargs[kw] = np.array(kwargs[kw], dtype = np.float64)
 
         if kwargs['body_type']=='star':
-            self.bodies.append(Star(**kwargs))
-            self.star = self.bodies[-1]
+            body = Star(**kwargs)
         elif kwargs['body_type']=='planet':
             parent = self.star if 'parent' not in kwargs else self.bodies[self.idx[kwargs['parent']]]
             kwargs['star'] = parent
-            self.bodies.append(Planet(**kwargs))
+            body = Planet(**kwargs)
         elif kwargs['body_type'] == 'satellite':
             parent = self.bodies[self.idx[kwargs['parent']]]
             kwargs['planet'] = parent
-            self.bodies.append(Satellite(**kwargs))
+            body = Satellite(**kwargs)
         else:
             raise KeyError(f"Unsupported body_type: {kwargs['body_type']}")
 
-        if kwargs['name']==self.planet_name:
-            self.planet = self.bodies[-1]
+        return body
 
+
+    @property
+    def idx(self) -> dict[str, int]:
+        return {self.bodies[i].name: i for i in range(len(self.bodies))}
 
     @property
     def positions(self) -> dict[str, list[float]]:
@@ -122,5 +130,4 @@ class StellarSystem:
 
         if isinstance(self.planet, Planet):
         # While we're at it, update:
-            self.planet.update_sunlight(delta_t, self.star)
-            self.planet.update_temperature(delta_t)
+            self.planet.update(delta_t, self.star)

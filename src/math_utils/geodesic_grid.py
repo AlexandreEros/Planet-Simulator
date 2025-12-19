@@ -1,7 +1,8 @@
 import numpy as np
 from scipy import sparse
 
-from .vector_utils import normalize
+from .vector_utils import normalize, cartesian_to_spherical, rotation_mat_x, rotation_mat_y
+
 
 class GeodesicGrid:
 # Create a basic geodesic grid (icosahedron-based)
@@ -31,11 +32,18 @@ class GeodesicGrid:
             self.mesh = self.geodesic_subdivide()
             self.vertices = self.radius * self.mesh[0]
             self.faces = self.mesh[1]
+            
+            self.vertices, self.faces = self.unique_vertices_and_faces(self.vertices, self.faces)
 
             self.n_vertices = len(self.vertices)
             self.n_faces = len(self.faces)
 
+            coordinates = np.apply_along_axis(cartesian_to_spherical, -1, self.vertices)
+            self.longitude = coordinates[:, 0]
+            self.latitude = coordinates[:, 1]
+
             self.adjacency_matrix = self.build_adjacency_matrix()
+            self.pentagons = self.get_pentagonal_vertices(self.adjacency_matrix)
 
         except Exception as err:
             raise Exception(f"Error in the constructor of `GeodesicGrid`:\n{err}")
@@ -83,10 +91,20 @@ class GeodesicGrid:
 
         vertices = np.array(vertices, dtype=np.float64)
         faces = np.array(faces, dtype=np.int32)
+
+        vertices = rotation_mat_x(1e-1).dot(vertices.T).T  # Prevent points from being exactly at the poles
+        vertices = rotation_mat_y(1e-1).dot(vertices.T).T
         return vertices, faces
 
 
-    def build_adjacency_matrix(self) -> sparse.coo_matrix:
+    @staticmethod
+    def unique_vertices_and_faces(vertices: np.ndarray, faces: np.ndarray) -> tuple[np.ndarray, np.ndarray]:
+        unique_vertices, inverse_indices = np.unique(vertices, axis=0, return_inverse=True)
+        updated_faces = inverse_indices[faces]
+        return unique_vertices, np.unique(updated_faces, axis=0)
+
+
+    def build_adjacency_matrix(self) -> sparse.csr_matrix:
         """
         Build an adjacency matrix for the geodesic grid using the inverse of the distance between vertices as weights.
         """
@@ -107,4 +125,11 @@ class GeodesicGrid:
                 col_indices.extend([b, a])
                 data.extend([weight, weight])
 
-        return sparse.coo_matrix((data, (row_indices, col_indices)), shape=(self.n_vertices, self.n_vertices))
+        return sparse.coo_matrix((data, (row_indices, col_indices)), shape=(self.n_vertices, self.n_vertices)).tocsr()
+
+    @staticmethod
+    def get_pentagonal_vertices(adjacency_matrix):
+        n_vertices = adjacency_matrix.shape[0]
+        n_neighbors = np.array([len(adjacency_matrix[row].data) for row in range(n_vertices)])
+        pentagons = np.where(n_neighbors==5)[0]
+        return pentagons
